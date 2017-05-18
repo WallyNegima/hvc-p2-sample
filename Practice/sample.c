@@ -3,6 +3,10 @@
 #include <wiringPi.h>
 #include <wiringSerial.h>
 
+#include "STBAP.h"
+#include "STBCommonDef.h"
+#include "STBTypedef.h"
+
 int main(){
   //シリアルポートをオープン
   int fd = serialOpen("");
