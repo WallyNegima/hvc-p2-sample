@@ -10,18 +10,18 @@
 
 int main(){
   //シリアルポートをオープン
-  int fd = serialOpen("/dev/ttyACM0", 9600);
+  int fd = serialOpen("/dev/tty.usbmodem1", 9600);
   if(fd<0){
     printf("can not ipen serialport");
   }
 
   while(1){
     //送信処理
-		int input = 0x00;
-		char command[1];
+		int input = 0xFE000;
+		char command[4];
 		itoa(input, command, 16);
     serialPuts(fd,command);
-		
+
 
 		//受信処理
     while(serialDataAvail(fd)){
@@ -33,4 +33,12 @@ int main(){
   }
 
   return 0;
+}
+
+
+int com_send(int fd, unsigned char *buf, int len)
+{
+    DWORD dwSize = 0;
+    serialPuts(fd, buf,len);
+    return (int)dwSize;
 }
