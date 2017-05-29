@@ -17,16 +17,15 @@ int main(){
     printf("connected! fd:%d\n", fd);
   }
 	unsigned char *command;
-	command = (unsigned char*)malloc(sizeof(unsigned char)*5);
+	command = (unsigned char*)malloc(sizeof(unsigned char)*4);
 	command[0] = 0xFE;
 	command[1] = 0x00;
 	command[2] = 0x00;
 	command[3] = 0x00;
-	command[4] = '\n';
 	//unsigned char* command = { 0xFE, 0x00, 0x00, 0x00 };
 
 	int i;
-	for(i=0; i<5; i++){
+	for(i=0; i<4; i++){
 		serialPutchar(fd, command[i]);
 	}
 	delay(1000);
@@ -42,10 +41,8 @@ int main(){
 		printf("kitenai\n");
 	}
 	while(serialDataAvail(fd)){
-		printf("%x\n", serialGetchar(fd));
-		uint8_t x;
-		printf(" - geted data\n");
-		fflush(stdout);
+		printf("%c ", serialGetchar(fd));
+		//fflush(stdout);
 	}
 	serialClose(fd);
 
