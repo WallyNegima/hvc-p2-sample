@@ -53,7 +53,7 @@ int main(){
 	for(i=0; i<commandBytes; i++){
 		serialPutchar(fd, command[i]);
 	}
-	delay(10000);
+	delay(4000);
 	for(i=0; i<commandBytes; i++){
 		printf("%x ", command[i]	);
 	}
