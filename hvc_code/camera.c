@@ -17,6 +17,8 @@ const char* serialPath = "/dev/ttyACM0";
 const int baudrate = 9600;
 int commandBytes = 4+3;
 int fd;
+int lsb, msb;
+
 int main(){
   /*シリアルオープン*/
   fd = serialOpen(serialPath, baudrate);
@@ -42,7 +44,7 @@ int main(){
 	bit1:手検出
 	bit0:人体検出
 	*/
-	command[5] = 0b00000001;
+	command[5] = 0b00000000;
 	/*
 	bit1:顔認証
 	bit0:表情
@@ -53,7 +55,7 @@ int main(){
 	for(i=0; i<commandBytes; i++){
 		serialPutchar(fd, command[i]);
 	}
-	delay(4000);
+	delay(1500);
 	for(i=0; i<commandBytes; i++){
 		printf("%x ", command[i]	);
 	}
@@ -114,22 +116,38 @@ int main(){
 		for(i=0; i<bodyNum; i++){
 			//検出結果を格納していく
 			getResult(&bodyResult[i]);
-			printf("result%d: x=%d y=%d size=%d confidence=%d", bodyResult[i].posX, bodyResult[i].posY, bodyResult[i].size, bodyResult[i].confidence);
+			printf("result%d: x=%d y=%d size=%d confidence=%d\n", bodyResult[i].posX, bodyResult[i].posY, bodyResult[i].size, bodyResult[i].confidence);
 		}
 
 		//手の検出結果
 		RESULT* handResult = (RESULT*)malloc(sizeof(RESULT)*handNum);
 		for(i=0; i<handNum; i++){
 			getResult(&handResult[i]);
-			printf("result%d: x=%d y=%d size=%d confidence=%d", handResult[i].posX, handResult[i].posY, handResult[i].size, handResult[i].confidence);
+			printf("result%d: x=%d y=%d size=%d confidence=%d\n", handResult[i].posX, handResult[i].posY, handResult[i].size, handResult[i].confidence);
 		}
 
 		//顔の検出結果
 		RESULT* faceResult = (RESULT*)malloc(sizeof(RESULT)*faceNum);
 		for(i=0; i<faceNum; i++){
 			getResult(&faceResult[i]);
-			printf("result%d: x=%d y=%d size=%d confidence=%d", faceResult[i].posX, faceResult[i].posY, faceResult[i].size, faceResult[i].confidence);
+			printf("result%d: x=%d y=%d size=%d confidence=%d\n", faceResult[i].posX, faceResult[i].posY, faceResult[i].size, faceResult[i].confidence);
+			
+			//年齢測定結果
+			int age;
+			int reliability;
+			age = serialGetchar(fd);
+			lsb = serialGetchar(fd);
+			msb = serialGetchar(fd);
+			reliability = lsb + msb<<8;
+			printf("age = %d \n", age);
+			//性別測定結果
+			int sex;
+			sex = serialGetchar(fd);
+			lsb = serialGetchar(fd);
+			msb = serialGetchar(fd);
+			printf("sex = %d\n", sex);
 		}
+
 		
 		unsigned char imageHead[4];
 		int imageWidth, imageHeight;
@@ -140,15 +158,25 @@ int main(){
 		imageHeight = imageHead[2] + (imageHead[3]<<8);
 		printf("width = %d\nheight = %d\n", imageWidth, imageHeight);
 			
-		int pixel = 0;
-		while(serialDataAvail(fd)){
-			if(pixel%imageWidth == 0){
-				printf("\n");
+		int pixelWidth, pixelHeight = 0;
+		int pixel;
+		for(pixelHeight=0; i<imageHeight; pixelHeight++){
+			for(pixelWidth=0; pixelWidth<imageWidth; pixelWidth++){
+				if(serialDataAvail(fd)){
+					pixel  = serialGetchar(fd);
+//					printf("%x ", pixel);
+				}else{
+					break;
+				}
 			}
-			printf("%x ", serialGetchar(fd));
-			pixel++;
+			if(serialDataAvail(fd)){
+//				printf("\n");
+			}else{
+				printf("x=%d y=%d で終了\n", pixelWidth, pixelHeight);
+				break;
+			}
 		}
-			
+		
 		printf("\nfinish\n");
 	}
 	serialClose(fd);
