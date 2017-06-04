@@ -178,8 +178,12 @@ int main(){
 		}
 		
 		printf("\nfinish\n");
+		free(bodyResult);
+		free(handResult);
+		free(faceResult);
 	}
 	serialClose(fd);
+	free(command);
 
 	printf("serial closed\n");
 	return 0;
