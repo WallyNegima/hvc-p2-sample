@@ -49,7 +49,7 @@ int main(){
 	bit1:顔認証
 	bit0:表情
 	*/
-	command[6] = 0x01;
+	command[6] = 0x00;
 
 	int i;
 	for(i=0; i<commandBytes; i++){
