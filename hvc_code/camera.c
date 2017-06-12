@@ -19,6 +19,32 @@ int commandBytes = 4+3;
 int fd;
 int lsb, msb;
 
+//検出した座標，その大きさ，信頼度を求めてRESULT型の構造体に格納
+void getResult(RESULT* result){
+	int receiveData[8];
+	int i;
+	for(i=0; i<8; i++){
+		receiveData[i] = (int)serialGetchar(fd);
+	}
+	result->posX = (long)(receiveData[0] | receiveData[1]<<8);
+	result->posY = (long)(receiveData[2] | receiveData[3]<<8);
+	result->size = (long)(receiveData[4] | receiveData[5]<<8);
+	result->confidence = (long)(receiveData[6] | receiveData[7]<<8);
+}
+
+//ビットを反転させる
+long bitswap(long data){
+	long swaped = 0;
+	int i = 0;
+	swaped =  data;
+	for(i=0; i<16; i++){
+		swaped <<= 1;
+		data >>= 1;
+		swaped |= (data & 1);
+	}
+	return swaped;
+}
+
 int main(){
   /*シリアルオープン*/
   fd = serialOpen(serialPath, baudrate);
@@ -130,8 +156,8 @@ int main(){
 		RESULT* faceResult = (RESULT*)malloc(sizeof(RESULT)*faceNum);
 		for(i=0; i<faceNum; i++){
 			getResult(&faceResult[i]);
-			printf("result%d: x=%d y=%d size=%d confidence=%d\n", faceResult[i].posX, faceResult[i].posY, faceResult[i].size, faceResult[i].confidence);
-			
+			printf("result%d: x=%d y=%d size=%d confidence=%d\n", i, faceResult[i].posX, faceResult[i].posY, faceResult[i].size, faceResult[i].confidence);
+
 			//年齢測定結果
 			int age;
 			int reliability;
@@ -148,35 +174,37 @@ int main(){
 			printf("sex = %d\n", sex);
 		}
 
-		
-		unsigned char imageHead[4];
-		int imageWidth, imageHeight;
-		for(i=0; i<4; i++){
-			imageHead[i] = serialGetchar(fd);
-		}
-		imageWidth = imageHead[0] + (imageHead[1]<<8);
-		imageHeight = imageHead[2] + (imageHead[3]<<8);
-		printf("width = %d\nheight = %d\n", imageWidth, imageHeight);
-			
-		int pixelWidth, pixelHeight = 0;
-		int pixel;
-		for(pixelHeight=0; i<imageHeight; pixelHeight++){
-			for(pixelWidth=0; pixelWidth<imageWidth; pixelWidth++){
+		//画像を取得する
+		if( command[6] && 0x11){
+			unsigned char imageHead[4];
+			int imageWidth, imageHeight;
+			for(i=0; i<4; i++){
+				imageHead[i] = serialGetchar(fd);
+			}
+			imageWidth = imageHead[0] + (imageHead[1]<<8);
+			imageHeight = imageHead[2] + (imageHead[3]<<8);
+			printf("width = %d\nheight = %d\n", imageWidth, imageHeight);
+				
+			int pixelWidth, pixelHeight = 0;
+			int pixel;
+			for(pixelHeight=0; i<imageHeight; pixelHeight++){
+				for(pixelWidth=0; pixelWidth<imageWidth; pixelWidth++){
+					if(serialDataAvail(fd)){
+						pixel  = serialGetchar(fd);
+	//					printf("%x ", pixel);
+					}else{
+					}
+				}
 				if(serialDataAvail(fd)){
-					pixel  = serialGetchar(fd);
-//					printf("%x ", pixel);
+	//				printf("\n");
 				}else{
+					printf("x=%d y=%d で終了\n", pixelWidth, pixelHeight);
 					break;
 				}
 			}
-			if(serialDataAvail(fd)){
-//				printf("\n");
-			}else{
-				printf("x=%d y=%d で終了\n", pixelWidth, pixelHeight);
-				break;
-			}
+
 		}
-		
+				
 		printf("\nfinish\n");
 		free(bodyResult);
 		free(handResult);
@@ -189,14 +217,4 @@ int main(){
 	return 0;
 }
 
-void getResult(RESULT* result){
-	int receiveData[8];
-	int i;
-	for(i=0; i<8; i++){
-		receiveData[i] = (int)serialGetchar(fd);
-	}
-	result->posX = (long)(receiveData[0] + receiveData[1]<<8);
-	result->posY = (long)(receiveData[2] + receiveData[3]<<8);
-	result->size = (long)(receiveData[4] + receiveData[5]<<8);
-	result->confidence = (long)(receiveData[6] + receiveData[7]<<8);
-}
+
