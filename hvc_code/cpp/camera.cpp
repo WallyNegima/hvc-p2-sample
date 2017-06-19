@@ -4,6 +4,7 @@
 #include <wiringPi.h>
 #include <wiringSerial.h>
 #include <sys/ioctl.h>
+#include <fluent.hpp>
 
 //検出結果を格納する構造体
 typedef struct{
@@ -91,6 +92,9 @@ int main(){
 	}
 	while(serialDataAvail(fd)){
 		//結果を受け取った後の処理
+		//fluentdに流すやつを用意
+		fluent::Logger *logger  = new fluent::Logger();
+		logger->new_forward("localhost", 24224);
 
 		//ヘッダー部を解析
 	//	printf("header:");
@@ -156,8 +160,13 @@ int main(){
 		RESULT* faceResult = (RESULT*)malloc(sizeof(RESULT)*faceNum);
 		for(i=0; i<faceNum; i++){
 			getResult(&faceResult[i]);
-			//printf("result%d: x=%d y=%d size=%d confidence=%d\n", i, faceResult[i].posX, faceResult[i].posY, faceResult[i].size, faceResult[i].confidence);
 			printf("%d %d %d %d", faceResult[i].posX, faceResult[i].posY, faceResult[i].size, faceResult[i].confidence);
+			//メッセージインスタンス作成
+		  fluent::Message *msg = logger->retain_message("tag.camera");
+			msg->set("posX", std::to_string(faceResult[i].posX));
+			msg->set("posY", std::to_string(faceResult[i].posY));
+			msg->set("size", std::to_string(faceResult[i].size));
+			msg->set("confidence", std::to_string(faceResult[i].confidence));
 			if( !(0x00001000 && command[5])){
 				//顔向き検出
 			}
@@ -170,6 +179,7 @@ int main(){
 				msb = serialGetchar(fd);
 				reliability = lsb + msb<<8;
 				printf(" %d", age);
+				msg->set("age", std::to_string(age));
 			}
 			if( !(0x00100000 && command[5])){
 				//性別測定結果
@@ -178,6 +188,7 @@ int main(){
 				lsb = serialGetchar(fd);
 				msb = serialGetchar(fd);
 				printf(" %d", sex);
+				msg->set("sex", std::to_string(sex));
 			}
 			if( !(0x01000000) && command[5]){
 				//視線検出
@@ -185,7 +196,11 @@ int main(){
 			if( !(0x10000000) && command[5]){
 				//目つむり検出
 			}
+
+			//ログを送信
+			logger->emit(msg);
 		}
+
 
 		//画像を取得する
 		if( command[6] && 0x11){
@@ -221,6 +236,7 @@ int main(){
 		free(bodyResult);
 		free(handResult);
 		free(faceResult);
+		delete logger;
 	}
 	serialClose(fd);
 	free(command);
