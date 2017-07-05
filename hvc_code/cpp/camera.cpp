@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <unistd.h>
 #include <stdint.h>
 #include <wiringPi.h>
 #include <wiringSerial.h>
@@ -53,6 +54,7 @@ int main(){
     printf("can not open serialPort");
   }else{
   //  printf("connected! fd:%d\n", fd);
+	serialFlush(fd);
   }
 	unsigned char *command;
 	command = (unsigned char*)malloc(sizeof(unsigned char)*commandBytes);
@@ -77,172 +79,178 @@ int main(){
 	bit0:表情
 	*/
 	command[6] = 0x00;
+	/*
+	0x00 no image
+	0x01 320*240
+	0x02 160*120
+	*/
 
-	int i;
-	for(i=0; i<commandBytes; i++){
-		serialPutchar(fd, command[i]);
-	}
-	delay(1500);
-	for(i=0; i<commandBytes; i++){
-	//	printf("%x ", command[i]	);
-	}
-	//printf("some data arrived!\n");
-	if(!serialDataAvail(fd)){
-	//	printf("kitenai\n");
-	}
-	while(serialDataAvail(fd)){
-		//結果を受け取った後の処理
-		//fluentdに流すやつを用意
-		fluent::Logger *logger  = new fluent::Logger();
-		logger->new_forward("localhost", 24224);
+	while(1){
 
-		//ヘッダー部を解析
-	//	printf("header:");
-		for(i=0; i<2; i++){
-			//printf("%x ", serialGetchar(fd));
-			serialGetchar(fd);
+		int i;
+		for(i=0; i<commandBytes; i++){
+			serialPutchar(fd, command[i]);
 		}
-		//printf("\n");
-		
-		//データ長をもとめる
-		unsigned char tmp_datasize[4];
-		unsigned char l_lsb, l_msb, h_lsb, h_msb;
-		unsigned long datasize;
-		//printf("datasize:");
-		for(i=0; i<4; i++){
-			tmp_datasize[i] = serialGetchar(fd);
-			//printf("%x ", tmp_datasize[i]);
+		delay(1500);
+		for(i=0; i<commandBytes; i++){
+		//	printf("%x ", command[i]	);
 		}
-		h_msb = tmp_datasize[3];
-		h_lsb = tmp_datasize[2];
-		l_msb = tmp_datasize[1];
-		l_lsb = tmp_datasize[0];
-
-		datasize = (long)l_lsb;
-		datasize = datasize | (l_msb << 8) | (h_lsb << 16) | (h_msb << 24);
-		//printf("total = %d byte\n", datasize);
-
-		//データの処理
-		//人体の検出数を求める
-		int bodyNum = 0;
-		bodyNum = serialGetchar(fd);
-		//printf("body:%d\n", bodyNum);
-		//手の検出数を求める
-		int handNum = 0;
-		handNum = serialGetchar(fd);
-		//printf("hand:%d\n", handNum);
-		//顔の検出数を求める		
-		int faceNum = 0;
-		faceNum = serialGetchar(fd);
-		//printf("face:%d\n", faceNum);
-		//予約
-		int buf = 0;
-		buf = serialGetchar(fd);
-		//printf("buf:%d\n", buf);
-
-		//検出結果を取り出す
-		//人体の検出結果
-		RESULT* bodyResult = (RESULT*)malloc(sizeof(RESULT)*bodyNum);
-		for(i=0; i<bodyNum; i++){
-			//検出結果を格納していく
-			getResult(&bodyResult[i]);
-			printf("result%d: x=%d y=%d size=%d confidence=%d\n", bodyResult[i].posX, bodyResult[i].posY, bodyResult[i].size, bodyResult[i].confidence);
+		//printf("some data arrived!\n");
+		if(!serialDataAvail(fd)){
+		//	printf("kitenai\n");
 		}
+		while(serialDataAvail(fd)){
+			//結果を受け取った後の処理
+			//fluentdに流すやつを用意
+			fluent::Logger *logger  = new fluent::Logger();
+			logger->new_forward("localhost", 24224);
 
-		//手の検出結果
-		RESULT* handResult = (RESULT*)malloc(sizeof(RESULT)*handNum);
-		for(i=0; i<handNum; i++){
-			getResult(&handResult[i]);
-			printf("result%d: x=%d y=%d size=%d confidence=%d\n", handResult[i].posX, handResult[i].posY, handResult[i].size, handResult[i].confidence);
-		}
-
-		//顔の検出結果
-		RESULT* faceResult = (RESULT*)malloc(sizeof(RESULT)*faceNum);
-		for(i=0; i<faceNum; i++){
-			getResult(&faceResult[i]);
-			printf("%d %d %d %d", faceResult[i].posX, faceResult[i].posY, faceResult[i].size, faceResult[i].confidence);
-			//メッセージインスタンス作成
-		  fluent::Message *msg = logger->retain_message("tag.camera");
-			msg->set("posX", std::to_string(faceResult[i].posX));
-			msg->set("posY", std::to_string(faceResult[i].posY));
-			msg->set("size", std::to_string(faceResult[i].size));
-			msg->set("confidence", std::to_string(faceResult[i].confidence));
-			if( !(0x00001000 && command[5])){
-				//顔向き検出
+			//ヘッダー部を解析
+		//	printf("header:");
+			for(i=0; i<2; i++){
+				//printf("%x ", serialGetchar(fd));
+				serialGetchar(fd);
 			}
-			if( !(0x00010000 && command[5])){
-				//年齢検出
-				int age;
-				int reliability;
-				age = serialGetchar(fd);
-				lsb = serialGetchar(fd);
-				msb = serialGetchar(fd);
-				reliability = lsb + msb<<8;
-				printf(" %d", age);
-				msg->set("age", std::to_string(age));
-			}
-			if( !(0x00100000 && command[5])){
-				//性別測定結果
-				int sex;
-				sex = serialGetchar(fd);
-				lsb = serialGetchar(fd);
-				msb = serialGetchar(fd);
-				printf(" %d", sex);
-				msg->set("sex", std::to_string(sex));
-			}
-			if( !(0x01000000) && command[5]){
-				//視線検出
-			}
-			if( !(0x10000000) && command[5]){
-				//目つむり検出
-			}
-
-			//ログを送信
-			logger->emit(msg);
-		}
-
-
-		//画像を取得する
-		if( command[6] && 0x11){
-			unsigned char imageHead[4];
-			int imageWidth, imageHeight;
+			//printf("\n");
+			
+			//データ長をもとめる
+			unsigned char tmp_datasize[4];
+			unsigned char l_lsb, l_msb, h_lsb, h_msb;
+			unsigned long datasize;
+			//printf("datasize:");
 			for(i=0; i<4; i++){
-				imageHead[i] = serialGetchar(fd);
+				tmp_datasize[i] = serialGetchar(fd);
+				//printf("%x ", tmp_datasize[i]);
 			}
-			imageWidth = imageHead[0] + (imageHead[1]<<8);
-			imageHeight = imageHead[2] + (imageHead[3]<<8);
-			printf("width = %d\nheight = %d\n", imageWidth, imageHeight);
-				
-			int pixelWidth, pixelHeight = 0;
-			int pixel;
-			for(pixelHeight=0; i<imageHeight; pixelHeight++){
-				for(pixelWidth=0; pixelWidth<imageWidth; pixelWidth++){
+			h_msb = tmp_datasize[3];
+			h_lsb = tmp_datasize[2];
+			l_msb = tmp_datasize[1];
+			l_lsb = tmp_datasize[0];
+
+			datasize = (long)l_lsb;
+			datasize = datasize | (l_msb << 8) | (h_lsb << 16) | (h_msb << 24);
+			//printf("total = %d byte\n", datasize);
+
+			//データの処理
+			//人体の検出数を求める
+			int bodyNum = 0;
+			bodyNum = serialGetchar(fd);
+			//printf("body:%d\n", bodyNum);
+			//手の検出数を求める
+			int handNum = 0;
+			handNum = serialGetchar(fd);
+			//printf("hand:%d\n", handNum);
+			//顔の検出数を求める		
+			int faceNum = 0;
+			faceNum = serialGetchar(fd);
+			//printf("face:%d\n", faceNum);
+			//予約
+			int buf = 0;
+			buf = serialGetchar(fd);
+			//printf("buf:%d\n", buf);
+
+			//検出結果を取り出す
+			//人体の検出結果
+			RESULT* bodyResult = (RESULT*)malloc(sizeof(RESULT)*bodyNum);
+			for(i=0; i<bodyNum; i++){
+				//検出結果を格納していく
+				getResult(&bodyResult[i]);
+				printf("result%d: x=%d y=%d size=%d confidence=%d\n", bodyResult[i].posX, bodyResult[i].posY, bodyResult[i].size, bodyResult[i].confidence);
+			}
+
+			//手の検出結果
+			RESULT* handResult = (RESULT*)malloc(sizeof(RESULT)*handNum);
+			for(i=0; i<handNum; i++){
+				getResult(&handResult[i]);
+				printf("result%d: x=%d y=%d size=%d confidence=%d\n", handResult[i].posX, handResult[i].posY, handResult[i].size, handResult[i].confidence);
+			}
+
+			//顔の検出結果
+			RESULT* faceResult = (RESULT*)malloc(sizeof(RESULT)*faceNum);
+			for(i=0; i<faceNum; i++){
+				getResult(&faceResult[i]);
+				printf("%d %d %d %d", faceResult[i].posX, faceResult[i].posY, faceResult[i].size, faceResult[i].confidence);
+				//メッセージインスタンス作成
+				fluent::Message *msg = logger->retain_message("tag.camera");
+				msg->set("posX", std::to_string(faceResult[i].posX));
+				msg->set("posY", std::to_string(faceResult[i].posY));
+				msg->set("size", std::to_string(faceResult[i].size));
+				msg->set("confidence", std::to_string(faceResult[i].confidence));
+				if( !(0x00001000 && command[5])){
+					//顔向き検出
+				}
+				if( !(0x00010000 && command[5])){
+					//年齢検出
+					int age;
+					int reliability;
+					age = serialGetchar(fd);
+					lsb = serialGetchar(fd);
+					msb = serialGetchar(fd);
+					reliability = lsb + msb<<8;
+					printf(" %d", age);
+					msg->set("age", std::to_string(age));
+				}
+				if( !(0x00100000 && command[5])){
+					//性別測定結果
+					int sex;
+					sex = serialGetchar(fd);
+					lsb = serialGetchar(fd);
+					msb = serialGetchar(fd);
+					printf(" %d", sex);
+					msg->set("sex", std::to_string(sex));
+				}
+				if( !(0x01000000) && command[5]){
+					//視線検出
+				}
+				if( !(0x10000000) && command[5]){
+					//目つむり検出
+				}
+
+				//ログを送信
+				logger->emit(msg);
+			}
+
+
+			//画像を取得する
+			if( command[6] && 0x11){
+				unsigned char imageHead[4];
+				int imageWidth, imageHeight;
+				for(i=0; i<4; i++){
+					imageHead[i] = serialGetchar(fd);
+				}
+				imageWidth = imageHead[0] + (imageHead[1]<<8);
+				imageHeight = imageHead[2] + (imageHead[3]<<8);
+				printf("\nwidth = %d\nheight = %d\n", imageWidth, imageHeight);
+					
+				int pixelWidth, pixelHeight = 0;
+				int pixel;
+				for(pixelHeight=0; i<imageHeight; pixelHeight++){
+					for(pixelWidth=0; pixelWidth<imageWidth; pixelWidth++){
+						if(serialDataAvail(fd)){
+							pixel  = serialGetchar(fd);
+		//					printf("%x ", pixel);
+						}else{
+						}
+					}
 					if(serialDataAvail(fd)){
-						pixel  = serialGetchar(fd);
-	//					printf("%x ", pixel);
+		//				printf("\n");
 					}else{
+						printf("x=%d y=%d で終了\n", pixelWidth, pixelHeight);
+						break;
 					}
 				}
-				if(serialDataAvail(fd)){
-	//				printf("\n");
-				}else{
-					printf("x=%d y=%d で終了\n", pixelWidth, pixelHeight);
-					break;
-				}
 			}
+					
+			//printf("\nfinish\n");
+			free(bodyResult);
+			free(handResult);
+			free(faceResult);
+			delete logger;
 		}
-				
-		//printf("\nfinish\n");
-		free(bodyResult);
-		free(handResult);
-		free(faceResult);
-		delete logger;
+		delay(1000);
+		printf("a\n");
 	}
 	serialClose(fd);
 	free(command);
-
-	//printf("serial closed\n");
-	return 0;
 }
-
-
+	//printf("serial closed\n");
