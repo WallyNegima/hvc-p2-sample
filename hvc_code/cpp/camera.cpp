@@ -22,7 +22,7 @@ int fd;
 int lsb, msb;
 
 //検出した座標，その大きさ，信頼度を求めてRESULT型の構造体に格納
-void getResult(RESULT* result){
+void getObjectResult(RESULT* result){
 	int receiveData[8];
 	int i;
 	for(i=0; i<8; i++){
@@ -54,7 +54,6 @@ int main(){
     printf("can not open serialPort");
   }else{
   //  printf("connected! fd:%d\n", fd);
-	serialFlush(fd);
   }
 	unsigned char *command;
 	command = (unsigned char*)malloc(sizeof(unsigned char)*commandBytes);
@@ -73,7 +72,7 @@ int main(){
 	bit1:手検出
 	bit0:人体検出
 	*/
-	command[5] = 0b00000000;
+	command[5] = 0b00000001;
 	/*
 	bit1:顔認証
 	bit0:表情
@@ -86,27 +85,22 @@ int main(){
 	*/
 
 	while(1){
-
 		int i;
+		serialFlush(fd); //コマンド送る前に送信途中のデータは破棄
 		for(i=0; i<commandBytes; i++){
 			serialPutchar(fd, command[i]);
 		}
-		delay(1500);
-		for(i=0; i<commandBytes; i++){
-		//	printf("%x ", command[i]	);
-		}
-		//printf("some data arrived!\n");
+		delay(500);
 		if(!serialDataAvail(fd)){
 		//	printf("kitenai\n");
 		}
-		while(serialDataAvail(fd)){
+		if(serialDataAvail(fd)){
 			//結果を受け取った後の処理
 			//fluentdに流すやつを用意
 			fluent::Logger *logger  = new fluent::Logger();
 			logger->new_forward("localhost", 24224);
 
 			//ヘッダー部を解析
-		//	printf("header:");
 			for(i=0; i<2; i++){
 				//printf("%x ", serialGetchar(fd));
 				serialGetchar(fd);
@@ -135,15 +129,15 @@ int main(){
 			//人体の検出数を求める
 			int bodyNum = 0;
 			bodyNum = serialGetchar(fd);
-			//printf("body:%d\n", bodyNum);
+			printf("body:%d\n", bodyNum);
 			//手の検出数を求める
 			int handNum = 0;
 			handNum = serialGetchar(fd);
-			//printf("hand:%d\n", handNum);
+			printf("hand:%d\n", handNum);
 			//顔の検出数を求める		
 			int faceNum = 0;
 			faceNum = serialGetchar(fd);
-			//printf("face:%d\n", faceNum);
+			printf("face:%d\n", faceNum);
 			//予約
 			int buf = 0;
 			buf = serialGetchar(fd);
@@ -154,21 +148,21 @@ int main(){
 			RESULT* bodyResult = (RESULT*)malloc(sizeof(RESULT)*bodyNum);
 			for(i=0; i<bodyNum; i++){
 				//検出結果を格納していく
-				getResult(&bodyResult[i]);
-				printf("result%d: x=%d y=%d size=%d confidence=%d\n", bodyResult[i].posX, bodyResult[i].posY, bodyResult[i].size, bodyResult[i].confidence);
+				getObjectResult(&bodyResult[i]);
+				printf("x=%d y=%d size=%d confidence=%d\n", bodyResult[i].posX, bodyResult[i].posY, bodyResult[i].size, bodyResult[i].confidence);
 			}
 
 			//手の検出結果
 			RESULT* handResult = (RESULT*)malloc(sizeof(RESULT)*handNum);
 			for(i=0; i<handNum; i++){
-				getResult(&handResult[i]);
-				printf("result%d: x=%d y=%d size=%d confidence=%d\n", handResult[i].posX, handResult[i].posY, handResult[i].size, handResult[i].confidence);
+				getObjectResult(&handResult[i]);
+				printf("x=%d y=%d size=%d confidence=%d\n", handResult[i].posX, handResult[i].posY, handResult[i].size, handResult[i].confidence);
 			}
 
 			//顔の検出結果
 			RESULT* faceResult = (RESULT*)malloc(sizeof(RESULT)*faceNum);
 			for(i=0; i<faceNum; i++){
-				getResult(&faceResult[i]);
+				getObjectResult(&faceResult[i]);
 				printf("%d %d %d %d", faceResult[i].posX, faceResult[i].posY, faceResult[i].size, faceResult[i].confidence);
 				//メッセージインスタンス作成
 				fluent::Message *msg = logger->retain_message("tag.camera");
@@ -176,10 +170,10 @@ int main(){
 				msg->set("posY", std::to_string(faceResult[i].posY));
 				msg->set("size", std::to_string(faceResult[i].size));
 				msg->set("confidence", std::to_string(faceResult[i].confidence));
-				if( !(0x00001000 && command[5])){
+				if( 0b00001000 && command[4]){
 					//顔向き検出
 				}
-				if( !(0x00010000 && command[5])){
+				if( 0b00010000 && command[4]){
 					//年齢検出
 					int age;
 					int reliability;
@@ -187,10 +181,10 @@ int main(){
 					lsb = serialGetchar(fd);
 					msb = serialGetchar(fd);
 					reliability = lsb + msb<<8;
-					printf(" %d", age);
+					printf(" %d", age-10);
 					msg->set("age", std::to_string(age));
 				}
-				if( !(0x00100000 && command[5])){
+				if( 0b00100000 && command[4]){
 					//性別測定結果
 					int sex;
 					sex = serialGetchar(fd);
@@ -199,11 +193,28 @@ int main(){
 					printf(" %d", sex);
 					msg->set("sex", std::to_string(sex));
 				}
-				if( !(0x01000000) && command[5]){
+				if( 0b01000000 && command[4]){
 					//視線検出
 				}
-				if( !(0x10000000) && command[5]){
+				if( 0b10000000 && command[4]){
 					//目つむり検出
+				}
+				if( 0b00000001 && command[5]){
+					//表情
+					int noneEmotion, joyEmotion, surprizeEmotion, angerEmotion, sorrowEmotion, totalEmotion;
+					noneEmotion = serialGetchar(fd);
+					joyEmotion = serialGetchar(fd);
+					surprizeEmotion = serialGetchar(fd);
+					angerEmotion = serialGetchar(fd);
+					sorrowEmotion = serialGetchar(fd);
+					totalEmotion = serialGetchar(fd);
+					printf(" %d %d %d %d %d %d",noneEmotion, joyEmotion, surprizeEmotion, angerEmotion, sorrowEmotion, totalEmotion-100); 
+					msg->set("noneEmo", std::to_string(noneEmotion));
+					msg->set("joyEmo", std::to_string(joyEmotion));
+					msg->set("surprizeEmo", std::to_string(surprizeEmotion));
+					msg->set("angerEmo", std::to_string(angerEmotion));
+					msg->set("sorrowEmo", std::to_string(sorrowEmotion));
+					msg->set("totalEmo", std::to_string(totalEmotion));
 				}
 
 				//ログを送信
@@ -247,10 +258,9 @@ int main(){
 			free(faceResult);
 			delete logger;
 		}
-		delay(1000);
+		delay(5000);
 		printf("a\n");
 	}
 	serialClose(fd);
 	free(command);
 }
-	//printf("serial closed\n");
