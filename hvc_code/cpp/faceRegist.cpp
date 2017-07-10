@@ -61,7 +61,7 @@ int main(){
 	command[1] = 0x04;
 	command[2] = 0x03;
 	command[3] = 0x00;
-	command[4] = 0b00110100;
+	command[4] = 0b00000100;
 	/*
 	bit7:目つむり
 	bit6:視線
@@ -72,7 +72,7 @@ int main(){
 	bit1:手検出
 	bit0:人体検出
 	*/
-	command[5] = 0b00000011;
+	command[5] = 0b00000000;
 	/*
 	bit1:顔認証
 	bit0:表情
@@ -164,112 +164,94 @@ int main(){
 			for(i=0; i<faceNum; i++){
 				getObjectResult(&faceResult[i]);
 				printf("%d %d %d %d", faceResult[i].posX, faceResult[i].posY, faceResult[i].size, faceResult[i].confidence);
+				
+				//認識した顔を登録！！
+				unsigned char* faceRegistCommand;
+				faceRegistCommand = (unsigned char*)malloc(sizeof(unsigned char)*commandBytes);
+				faceRegistCommand[0] = 0xFE;
+				faceRegistCommand[1] = 0x10;
+				faceRegistCommand[2] = 0x03;
+				faceRegistCommand[3] = 0x00;
+				faceRegistCommand[4] = 0x01;
+				faceRegistCommand[5] = 0x00;
+				/*
+				ユーザーIDを指定
+				4,5はユーザーID
+				4がLSB,5がMSB
+				*/
+				faceRegistCommand[6] = 0x01;//データIDを指定
+				//受信できるデータは全て破棄して，登録用コマンドを送る
+				serialFlush(fd);
+				for(i=0; i<commandBytes; i++){
+					serialPutchar(fd, command[i]);
+				}
+				delay(300);
+				printf("\n");
+
+				if(serialDataAvail(fd)){
+					//ヘッダー部を解析
+					for(i=0; i<2; i++){
+						//printf("%x ", serialGetchar(fd));
+						serialGetchar(fd);
+					}
+					//printf("\n");
+					
+					//データ長をもとめる
+					unsigned char tmp_datasize[4];
+					unsigned char l_lsb, l_msb, h_lsb, h_msb;
+					unsigned long datasize;
+					//printf("datasize:");
+					for(i=0; i<4; i++){
+						tmp_datasize[i] = serialGetchar(fd);
+						//printf("%x ", tmp_datasize[i]);
+					}
+					h_msb = tmp_datasize[3];
+					h_lsb = tmp_datasize[2];
+					l_msb = tmp_datasize[1];
+					l_lsb = tmp_datasize[0];
+
+					datasize = (long)l_lsb;
+					datasize = datasize | (l_msb << 8) | (h_lsb << 16) | (h_msb << 24);
+
+					//画像データを取得
+					unsigned char imageHead[4];
+					int imageWidth, imageHeight;
+					int pixelWidth, pixelHeight = 0;
+					int pixel;
+					imageWidth = 64;
+					imageHeight = 64;
+					for(pixelHeight=0; i<imageHeight; pixelHeight++){
+						for(pixelWidth=0; pixelWidth<imageWidth; pixelWidth++){
+							if(serialDataAvail(fd)){
+								pixel  = serialGetchar(fd);
+								printf("%x ", pixel);
+							}else{
+							}
+						}
+						if(serialDataAvail(fd)){
+							printf("\n");
+						}else{
+							printf("x=%d y=%d で終了\n", pixelWidth, pixelHeight);
+							break;
+						}
+					}
+				}
+
 				//メッセージインスタンス作成
 				fluent::Message *msg = logger->retain_message("tag.camera");
 				msg->set("posX", std::to_string(faceResult[i].posX));
 				msg->set("posY", std::to_string(faceResult[i].posY));
 				msg->set("size", std::to_string(faceResult[i].size));
 				msg->set("confidence", std::to_string(faceResult[i].confidence));
-				if( 0b00001000 && command[4]){
-					//顔向き検出
-				}
-				if( 0b00010000 && command[4]){
-					//年齢検出
-					int age;
-					int reliability;
-					age = serialGetchar(fd);
-					lsb = serialGetchar(fd);
-					msb = serialGetchar(fd);
-					reliability = lsb + msb<<8;
-					printf(" %d", age-10);
-					msg->set("age", std::to_string(age));
-				}
-				if( 0b00100000 && command[4]){
-					//性別測定結果
-					int sex;
-					sex = serialGetchar(fd);
-					lsb = serialGetchar(fd);
-					msb = serialGetchar(fd);
-					printf(" %d", sex);
-					msg->set("sex", std::to_string(sex));
-				}
-				if( 0b01000000 && command[4]){
-					//視線検出
-				}
-				if( 0b10000000 && command[4]){
-					//目つむり検出
-				}
-				if( 0b00000001 && command[5]){
-					//表情
-					int noneEmotion, joyEmotion, surprizeEmotion, angerEmotion, sorrowEmotion, totalEmotion;
-					noneEmotion = serialGetchar(fd);
-					joyEmotion = serialGetchar(fd);
-					surprizeEmotion = serialGetchar(fd);
-					angerEmotion = serialGetchar(fd);
-					sorrowEmotion = serialGetchar(fd);
-					totalEmotion = serialGetchar(fd);
-					printf(" %d %d %d %d %d %d",noneEmotion, joyEmotion, surprizeEmotion, angerEmotion, sorrowEmotion, totalEmotion-100); 
-					msg->set("noneEmo", std::to_string(noneEmotion));
-					msg->set("joyEmo", std::to_string(joyEmotion));
-					msg->set("surprizeEmo", std::to_string(surprizeEmotion));
-					msg->set("angerEmo", std::to_string(angerEmotion));
-					msg->set("sorrowEmo", std::to_string(sorrowEmotion));
-					msg->set("totalEmo", std::to_string(totalEmotion));
-				}
-				if( 0b00000010 && command[5]){
-					//顔認証
-					int userid, similarity;
-					lsb = serialGetchar(fd);
-					msb = serialGetchar(fd);
-					userid = lsb + (msb << 8);
-					lsb = serialGetchar(fd);
-					msb = serialGetchar(fd);
-					similarity = lsb + (msb << 8); 		
-					if( userid == 0xFF80 ){
-							printf("cannot ninsho\n");
-					}else if( userid == 0xFF81){
-							printf("album is none\n");
-					}else{
-						printf(" %d %d", userid, similarity);
-					}
-				}
-
+				msg->set("userId", std::to_string(1));
+				msg->set("dataId", std::to_string(1));	
 				//ログを送信
 				logger->emit(msg);
+				printf("registed\n");
+				free(faceRegistCommand);
+				delete logger;
+				break;
 			}
-
-
-			//画像を取得する
-			if( command[6] && 0x11){
-				unsigned char imageHead[4];
-				int imageWidth, imageHeight;
-				for(i=0; i<4; i++){
-					imageHead[i] = serialGetchar(fd);
-				}
-				imageWidth = imageHead[0] + (imageHead[1]<<8);
-				imageHeight = imageHead[2] + (imageHead[3]<<8);
-				printf("\nwidth = %d\nheight = %d\n", imageWidth, imageHeight);
-					
-				int pixelWidth, pixelHeight = 0;
-				int pixel;
-				for(pixelHeight=0; i<imageHeight; pixelHeight++){
-					for(pixelWidth=0; pixelWidth<imageWidth; pixelWidth++){
-						if(serialDataAvail(fd)){
-							pixel  = serialGetchar(fd);
-		//					printf("%x ", pixel);
-						}else{
-						}
-					}
-					if(serialDataAvail(fd)){
-		//				printf("\n");
-					}else{
-						printf("x=%d y=%d で終了\n", pixelWidth, pixelHeight);
-						break;
-					}
-				}
-			}
-					
-			//printf("\nfinish\n");
 			free(bodyResult);
 			free(handResult);
 			free(faceResult);
