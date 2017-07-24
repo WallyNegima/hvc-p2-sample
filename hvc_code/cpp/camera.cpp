@@ -6,6 +6,7 @@
 #include <wiringSerial.h>
 #include <sys/ioctl.h>
 #include <fluent.hpp>
+#include <sqlite3.h>
 
 //検出結果を格納する構造体
 typedef struct{
@@ -17,6 +18,8 @@ typedef struct{
 
 const char* serialPath = "/dev/ttyACM0";
 const int baudrate = 9600;
+const char* dbName = "userFace.db";
+sqlite3 *db = NULL;
 int commandBytes = 4+3;
 int fd;
 int lsb, msb;
@@ -84,6 +87,14 @@ int main(){
 	0x02 160*120
 	*/
 
+	//** db
+	int dbNum = sqlite3_open(dbName, &db);
+	if(SQLITE_OK != dbNum){
+		printf("db no good");
+	}
+
+	//*/
+
 	while(1){
 		int i;
 		serialFlush(fd); //コマンド送る前に送信途中のデータは破棄
@@ -124,12 +135,12 @@ int main(){
 			datasize = (long)l_lsb;
 			datasize = datasize | (l_msb << 8) | (h_lsb << 16) | (h_msb << 24);
 			//printf("total = %d byte\n", datasize);
-
+			printf("--------------------\n");
 			//データの処理
 			//人体の検出数を求める
 			int bodyNum = 0;
 			bodyNum = serialGetchar(fd);
-			printf("body:%d\n", bodyNum);
+			printf("\nbody:%d\n", bodyNum);
 			//手の検出数を求める
 			int handNum = 0;
 			handNum = serialGetchar(fd);
@@ -163,7 +174,10 @@ int main(){
 			RESULT* faceResult = (RESULT*)malloc(sizeof(RESULT)*faceNum);
 			for(i=0; i<faceNum; i++){
 				getObjectResult(&faceResult[i]);
-				printf("%d %d %d %d", faceResult[i].posX, faceResult[i].posY, faceResult[i].size, faceResult[i].confidence);
+				printf("x座標:%d\n", faceResult[i].posX);
+				printf("y座標:%d\n", faceResult[i].posY); 
+				printf("サイズ:%d\n", faceResult[i].size);
+				printf("信頼度:%d\n", faceResult[i].confidence);
 				//メッセージインスタンス作成
 				fluent::Message *msg = logger->retain_message("tag.camera");
 				msg->set("posX", std::to_string(faceResult[i].posX));
@@ -181,7 +195,7 @@ int main(){
 					lsb = serialGetchar(fd);
 					msb = serialGetchar(fd);
 					reliability = lsb + msb<<8;
-					printf(" %d", age-10);
+					printf("年齢:%d\n", age-10);
 					msg->set("age", std::to_string(age));
 				}
 				if( 0b00100000 && command[4]){
@@ -190,7 +204,11 @@ int main(){
 					sex = serialGetchar(fd);
 					lsb = serialGetchar(fd);
 					msb = serialGetchar(fd);
-					printf(" %d", sex);
+					if( sex == 1){
+						printf("性別:男性\n");
+					}else{
+						printf("性別:女性\n");
+					}
 					msg->set("sex", std::to_string(sex));
 				}
 				if( 0b01000000 && command[4]){
@@ -208,7 +226,7 @@ int main(){
 					angerEmotion = serialGetchar(fd);
 					sorrowEmotion = serialGetchar(fd);
 					totalEmotion = serialGetchar(fd);
-					printf(" %d %d %d %d %d %d",noneEmotion, joyEmotion, surprizeEmotion, angerEmotion, sorrowEmotion, totalEmotion-100); 
+					printf("無表情感:%d\n喜び:%d\n驚き:%d\n怒り:%d\n悲しみ:%d\n表情度:%d\n",noneEmotion, joyEmotion, surprizeEmotion, angerEmotion, sorrowEmotion, totalEmotion-100); 
 					msg->set("noneEmo", std::to_string(noneEmotion));
 					msg->set("joyEmo", std::to_string(joyEmotion));
 					msg->set("surprizeEmo", std::to_string(surprizeEmotion));
@@ -269,15 +287,12 @@ int main(){
 				}
 			}
 					
-			//printf("\nfinish\n");
 			free(bodyResult);
 			free(handResult);
 			free(faceResult);
 			delete logger;
 		}
 		delay(5000);
-		printf("a\n");
 	}
 	serialClose(fd);
-	free(command);
 }
