@@ -6,7 +6,6 @@
 #include <wiringSerial.h>
 #include <sys/ioctl.h>
 #include <fluent.hpp>
-#include <sqlite3.h>
 
 //検出結果を格納する構造体
 typedef struct{
@@ -18,8 +17,8 @@ typedef struct{
 
 const char* serialPath = "/dev/ttyACM0";
 const int baudrate = 9600;
-const char* dbName = "userFace.db";
-sqlite3 *db = NULL;
+//const char* dbName = "userFace.db";
+//sqlite3 *db = NULL;
 int commandBytes = 4+3;
 int fd;
 int lsb, msb;
@@ -88,10 +87,12 @@ int main(){
 	*/
 
 	//** db
+    /*
 	int dbNum = sqlite3_open(dbName, &db);
 	if(SQLITE_OK != dbNum){
 		printf("db no good");
 	}
+    */
 
 	//*/
 
