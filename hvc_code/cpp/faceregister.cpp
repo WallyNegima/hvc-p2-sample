@@ -61,7 +61,7 @@ int main(){
 	command[1] = 0x10;
 	command[2] = 0x03;
 	command[3] = 0x00;
-	command[4] = 0x02;
+	command[4] = 0x01;
 	command[5] = 0x00;
 	command[6] = 0x00;
 

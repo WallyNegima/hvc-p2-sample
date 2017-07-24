@@ -250,6 +250,7 @@ int main(){
 							printf("album is none\n");
 					}else{
 						printf(" %d %d", userid, similarity);
+                        msg->set("userid", std::to_string(userid));
 					}
 				}
 
