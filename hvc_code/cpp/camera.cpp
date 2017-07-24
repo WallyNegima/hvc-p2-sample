@@ -184,10 +184,10 @@ int main(){
 				msg->set("posY", std::to_string(faceResult[i].posY));
 				msg->set("size", std::to_string(faceResult[i].size));
 				msg->set("confidence", std::to_string(faceResult[i].confidence));
-				if( 0b00001000 && command[4]){
+				if( 0b00001000 & command[4]){
 					//顔向き検出
 				}
-				if( 0b00010000 && command[4]){
+				if( 0b00010000 & command[4]){
 					//年齢検出
 					int age;
 					int reliability;
@@ -198,7 +198,7 @@ int main(){
 					printf("年齢:%d\n", age-10);
 					msg->set("age", std::to_string(age));
 				}
-				if( 0b00100000 && command[4]){
+				if( 0b00100000 & command[4]){
 					//性別測定結果
 					int sex;
 					sex = serialGetchar(fd);
@@ -211,13 +211,13 @@ int main(){
 					}
 					msg->set("sex", std::to_string(sex));
 				}
-				if( 0b01000000 && command[4]){
+				if( 0b01000000 & command[4]){
 					//視線検出
 				}
-				if( 0b10000000 && command[4]){
+				if( 0b10000000 & command[4]){
 					//目つむり検出
 				}
-				if( 0b00000001 && command[5]){
+				if( 0b00000001 & command[5]){
 					//表情
 					int noneEmotion, joyEmotion, surprizeEmotion, angerEmotion, sorrowEmotion, totalEmotion;
 					noneEmotion = serialGetchar(fd);
@@ -234,7 +234,7 @@ int main(){
 					msg->set("sorrowEmo", std::to_string(sorrowEmotion));
 					msg->set("totalEmo", std::to_string(totalEmotion));
 				}
-				if( 0b00000010 && command[5]){
+				if( 0b00000010 & command[5]){
 					//顔認証
 					int userid, similarity;
 					lsb = serialGetchar(fd);
@@ -258,7 +258,7 @@ int main(){
 
 
 			//画像を取得する
-			if( command[6] && 0x11){
+			if( command[6] & 0x11){
 				unsigned char imageHead[4];
 				int imageWidth, imageHeight;
 				for(i=0; i<4; i++){
