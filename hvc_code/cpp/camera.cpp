@@ -180,7 +180,7 @@ int main(){
 				printf("サイズ:%d\n", faceResult[i].size);
 				printf("信頼度:%d\n", faceResult[i].confidence);
 				//メッセージインスタンス作成
-				fluent::Message *msg = logger->retain_message("tag.camera");
+				fluent::Message *msg = logger->retain_message("camera");
 				msg->set("posX", std::to_string(faceResult[i].posX));
 				msg->set("posY", std::to_string(faceResult[i].posY));
 				msg->set("size", std::to_string(faceResult[i].size));
