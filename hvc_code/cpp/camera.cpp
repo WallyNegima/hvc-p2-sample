@@ -293,8 +293,9 @@ int main(){
 			free(handResult);
 			free(faceResult);
 			delete logger;
+                        delay(7000);
 		}
-		delay(5000);
+		delay(2000);
 	}
 	serialClose(fd);
 }
