@@ -288,12 +288,14 @@ int main(){
 					}
 				}
 			}
-					
+			if(faceNum > 0){
+				delay(7000);
+			}
 			free(bodyResult);
 			free(handResult);
 			free(faceResult);
 			delete logger;
-                        delay(7000);
+
 		}
 		delay(2000);
 	}
