@@ -132,6 +132,23 @@ int main(){
 					}
 				}
 				delete logger;
+				//ROMに書き込む
+				command[0] = 0xFE;
+				command[1] = 0x22;
+				command[2] = 0x00;
+				command[3] = 0x00;
+				int i=0;
+				serialFlush(fd);
+				for(i=0; i<4; i++){
+					serialPutchar(fd, command[i]);
+				}
+				
+				if(serialDataAvail){
+					for(i=0; i<6; i++){
+						serialGetchar(fd);
+					}
+				}
+
 				printf("registed");
 				break;
 			}
