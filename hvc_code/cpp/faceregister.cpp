@@ -82,61 +82,77 @@ int main(){
 			logger->new_forward("localhost", 24224);
 
 			//ヘッダー部を解析
-			for(i=0; i<2; i++){
-				//printf("%x ", serialGetchar(fd));
+			serialGetchar(fd);
+			int responseCode;
+			responseCode = serialGetchar(fd);
+			if( responseCode == 0x00){
+				//データ長をもとめる
+				unsigned char tmp_datasize[4];
+				unsigned char l_lsb, l_msb, h_lsb, h_msb;
+				unsigned long datasize;
+				//printf("datasize:");
+				for(i=0; i<4; i++){
+					tmp_datasize[i] = serialGetchar(fd);
+					//printf("%x ", tmp_datasize[i]);
+				}
+				h_msb = tmp_datasize[3];
+				h_lsb = tmp_datasize[2];
+				l_msb = tmp_datasize[1];
+				l_lsb = tmp_datasize[0];
+
+				datasize = (long)l_lsb;
+				datasize = datasize | (l_msb << 8) | (h_lsb << 16) | (h_msb << 24);
+				printf("total = %d byte\n", datasize);
+
+
+				//画像データを取得
+				unsigned char imageHead[4];
+				int imageWidth, imageHeight;
+				int pixelWidth, pixelHeight;
+				int pixel;
+				imageWidth = 64;
+				imageHeight = 64;
 				serialGetchar(fd);
-			}
-			//printf("\n");
-			
-			//データ長をもとめる
-			unsigned char tmp_datasize[4];
-			unsigned char l_lsb, l_msb, h_lsb, h_msb;
-			unsigned long datasize;
-			//printf("datasize:");
-			for(i=0; i<4; i++){
-				tmp_datasize[i] = serialGetchar(fd);
-				//printf("%x ", tmp_datasize[i]);
-			}
-			h_msb = tmp_datasize[3];
-			h_lsb = tmp_datasize[2];
-			l_msb = tmp_datasize[1];
-			l_lsb = tmp_datasize[0];
-
-			datasize = (long)l_lsb;
-			datasize = datasize | (l_msb << 8) | (h_lsb << 16) | (h_msb << 24);
-			printf("total = %d byte\n", datasize);
-
-
-			//画像データを取得
-			unsigned char imageHead[4];
-			int imageWidth, imageHeight;
-			int pixelWidth, pixelHeight;
-			int pixel;
-			imageWidth = 64;
-			imageHeight = 64;
-			serialGetchar(fd);
-			serialGetchar(fd);
-			serialGetchar(fd);
-			serialGetchar(fd);
-			for(pixelHeight=0; i<imageHeight; pixelHeight++){
-				for(pixelWidth=0; pixelWidth<imageWidth; pixelWidth++){
+				serialGetchar(fd);
+				serialGetchar(fd);
+				serialGetchar(fd);
+				for(pixelHeight=0; i<imageHeight; pixelHeight++){
+					for(pixelWidth=0; pixelWidth<imageWidth; pixelWidth++){
+						if(serialDataAvail(fd)){
+							pixel  = serialGetchar(fd);
+							printf("%x ", pixel);
+						}else{
+						}
+					}
 					if(serialDataAvail(fd)){
-						pixel  = serialGetchar(fd);
-						printf("%x ", pixel);
+						printf("\n");
 					}else{
+						printf("x=%d y=%d で終了\n", pixelWidth, pixelHeight);
+						break;
 					}
 				}
-				if(serialDataAvail(fd)){
-					printf("\n");
-				}else{
-					printf("x=%d y=%d で終了\n", pixelWidth, pixelHeight);
-					break;
+				delete logger;
+				//ROMに書き込む
+				command[0] = 0xFE;
+				command[1] = 0x22;
+				command[2] = 0x00;
+				command[3] = 0x00;
+				int i=0;
+				serialFlush(fd);
+				for(i=0; i<4; i++){
+					serialPutchar(fd, command[i]);
 				}
+				
+				if(serialDataAvail){
+					for(i=0; i<6; i++){
+						serialGetchar(fd);
+					}
+				}
+
+				printf("registed");
+				break;
 			}
-			delete logger;
 		}
-		printf("registed");
-		break;
 	}
 
 	//ROMに書き込む
