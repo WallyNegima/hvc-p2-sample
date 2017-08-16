@@ -2,10 +2,12 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <stdint.h>
+#include <string.h>
 #include <wiringPi.h>
 #include <wiringSerial.h>
 #include <sys/ioctl.h>
 #include <fluent.hpp>
+#include <sqlite3.h>
 
 //検出結果を格納する構造体
 typedef struct{
@@ -20,6 +22,8 @@ const int baudrate = 9600;
 int commandBytes = 4+3;
 int fd;
 int lsb, msb;
+sqlite3 *db;
+char *zErrMsg;
 
 //検出した座標，その大きさ，信頼度を求めてRESULT型の構造体に格納
 void getObjectResult(RESULT* result){
@@ -86,6 +90,7 @@ int main(){
 			int responseCode;
 			responseCode = serialGetchar(fd);
 			if( responseCode == 0x00){
+				//人の顔を認識したら登録してbreak
 				//データ長をもとめる
 				unsigned char tmp_datasize[4];
 				unsigned char l_lsb, l_msb, h_lsb, h_msb;
@@ -103,7 +108,6 @@ int main(){
 				datasize = (long)l_lsb;
 				datasize = datasize | (l_msb << 8) | (h_lsb << 16) | (h_msb << 24);
 				printf("total = %d byte\n", datasize);
-
 
 				//画像データを取得
 				unsigned char imageHead[4];
@@ -131,6 +135,39 @@ int main(){
 						break;
 					}
 				}
+				
+				//sqlite
+				int rc = sqlite3_open("user.db", &db);
+				printf("open database user.db\n");
+				//create table
+				const char *create_table = "create table user(id integer, name text)";
+				rc = sqlite3_exec(db, create_table, 0, 0, &zErrMsg);
+				printf("create table\n");
+
+				const char *sql = "insert into user (id, name) values('?', '?');";
+				sqlite3_stmt *stmt = NULL;
+				sqlite3_prepare(db, sql, strlen(sql), &stmt, NULL);
+				sqlite3_reset(stmt);
+				//名前を入力してもらう
+				printf("名前を入力してね\n");
+				char username[32];
+				fgets(username, sizeof(username), stdin);
+				username[strlen(username)-1] = '\0';
+				printf("uour name is %s \n", &username);
+
+				sqlite3_bind_int(stmt, 0, 1);
+				sqlite3_bind_text(stmt, 1, username, strlen(username), SQLITE_TRANSIENT);
+				int loop = 0;
+				while(SQLITE_DONE != sqlite3_step(stmt)){
+					if(loop++ > 1000){
+						//error
+						printf("error\n");
+					}
+				}
+				printf("登録したよ");
+				sqlite3_finalize(stmt);
+
+
 				delete logger;
 				//ROMに書き込む
 				command[0] = 0xFE;
