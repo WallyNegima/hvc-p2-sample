@@ -143,9 +143,24 @@ int main(){
 				const char *create_table = "create table user(id integer, name text)";
 				rc = sqlite3_exec(db, create_table, 0, 0, &zErrMsg);
 				printf("create table\n");
-
-				const char *sql = "insert into user (id, name) values('?', '?');";
+				
+				//現在登録している人数を確認する
+				const char *sql = "select id, name from user order by id";
 				sqlite3_stmt *stmt = NULL;
+				int ret = sqlite3_prepare(db, sql, strlen(sql), &stmt, NULL);
+				int userNum = -1;
+				if(ret == SQLITE_OK && stmt){
+					userNum = sqlite3_column_count(stmt);
+					for(int col=0; col<userNum; col++){
+						printf("%d %s\n", sqlite3_column_int(stmt, col), sqlite3_column_text(stmt, col));
+					}
+					printf("user num = %d \n", userNum);
+				}else{
+					printf("cannot get userNum\n");
+				}
+
+				sql = "insert into user(id, name) values(?, ?)";
+				stmt = NULL;
 				sqlite3_prepare(db, sql, strlen(sql), &stmt, NULL);
 				sqlite3_reset(stmt);
 				//名前を入力してもらう
@@ -155,8 +170,8 @@ int main(){
 				username[strlen(username)-1] = '\0';
 				printf("uour name is %s \n", &username);
 
-				sqlite3_bind_int(stmt, 0, 1);
-				sqlite3_bind_text(stmt, 1, username, strlen(username), SQLITE_TRANSIENT);
+				sqlite3_bind_int(stmt, 1, userNum);
+				sqlite3_bind_text(stmt, 2, username, strlen(username), SQLITE_TRANSIENT);
 				int loop = 0;
 				while(SQLITE_DONE != sqlite3_step(stmt)){
 					if(loop++ > 1000){
@@ -165,6 +180,7 @@ int main(){
 					}
 				}
 				printf("登録したよ");
+				sqlite3_exec(db, "commit;",0,0,&zErrMsg);
 				sqlite3_finalize(stmt);
 
 
