@@ -137,7 +137,7 @@ int main(){
 				}
 				
 				//sqlite
-				int rc = sqlite3_open("user.db", &db);
+				int rc = sqlite3_open("/var/db/sqlite/user.db", &db);
 				printf("open database user.db\n");
 				//create table
 				const char *create_table = "create table user(id integer, name text)";
