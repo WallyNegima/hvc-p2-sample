@@ -179,6 +179,25 @@ int main(){
 				printf("y座標:%d\n", faceResult[i].posY); 
 				printf("サイズ:%d\n", faceResult[i].size);
 				printf("信頼度:%d\n", faceResult[i].confidence);
+				//顔の位置が真ん中･左右のどこにあるかを表示
+				//カメラから見て右側に顔があれば rightと表示
+				if(faceResult[i].posX <= 500){
+					printf("left\n");
+				}else if(faceResult[i].posX <= 1100){
+					printf("center\n");
+				}else{
+					printf("right\n");
+				}
+				//顔の位置が真ん中･上下のどこにあるか表示
+				//カメラからみて上に顔があれば upと表示
+				if(faceResult[i].posY <= 400){
+					printf("up\n");
+				}else if(faceResult[i].posY <= 800){
+					printf("center\n");
+				}
+				else{
+					printf("bottom\n");
+				}
 				//メッセージインスタンス作成
 				fluent::Message *msg = logger->retain_message("camera");
 				msg->set("posX", std::to_string(faceResult[i].posX));
