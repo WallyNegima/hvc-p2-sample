@@ -1,5 +1,0 @@
-2017-06-14T13:35:31+09:00	camera_result	{"posX":"848,592,384,527,128,128","posY":null,"size":null,"confidence":null,"age":null,"sex":null}
-2017-06-14T13:39:49+09:00	camera_result	{"posX":"816/656/384/554/23/1","posY":null,"size":null,"confidence":null,"age":null,"sex":null}
-2017-06-14T13:40:04+09:00	camera_result	{"posX":"649/668/428/583/24/1","posY":null,"size":null,"confidence":null,"age":null,"sex":null}
-2017-06-14T14:25:07+09:00	camera_result	{"posX posY size confidence age sex":"631 615 384 601 42 1"}
-2017-06-14T14:25:17+09:00	camera_result	{"posX posY size confidence age sex":"582 502 480 578 43 1"}
