@@ -76,6 +76,7 @@ unsigned int getResponseBytes(int fd){
 	}
 	datasize = (long)tmp_datasize[0];
 	datasize = datasize | (tmp_datasize[1] << 8) | (tmp_datasize[2] << 16) | (tmp_datasize[3] << 24);
+	return datasize;
 }
 
 void getObjectResult(RESULT* result, int fd){
@@ -207,10 +208,18 @@ int main(){
 					//顔の検出結果
 					RESULT* faceResult = (RESULT*)malloc(sizeof(RESULT)*faceNum);
 					for(int i=0; i<faceNum; i++){
+						fluent::Logger *logger = new fluent::Logger();
+						logger->new_forward("localhost", 24224);
+						fluent::Message *msg = logger->retain_message("camera");
 						getObjectResult(&faceResult[i],fd);//これで座標とサイズと信頼度がわかる
-						
+						msg->set("posX", std::to_string(faceResult[i].posX));
+						msg->set("posY", std::to_string(faceResult[i].posY));
+						msg->set("size", std::to_string(faceResult[i].size));
+						msg->set("confidence", std::to_string(faceResult[i].confidence));
+
 						//顔の位置を9分割して判定
 						int facePos = getFacePos(&faceResult[i]);
+						msg->set("pos", std::to_string(facePos));
 						if(facePos == 4){
 							printf("object is center\n");
 						}
@@ -220,11 +229,13 @@ int main(){
 							int age = 0;
 							age = getAge(fd);
 							printf("age:%d\n", age);
+							msg->set("age", std::to_string(age));
 						}
 						if(0b00100000 & command[4]){
 							int sex = -1;
 							sex = getSex(fd);
 							printf("sex:%d\n", sex);
+							msg->set("sex", std::to_string(sex));
 						}
 						if(0b01000000 & command[4]){
 							//視線検出
@@ -243,6 +254,12 @@ int main(){
 							totalEmotion = serialGetchar(fd);
 							printf("無表情感:%d\n喜び:%d\n驚き:%d\n怒り:%d\n悲しみ:%d\n表情度:%d\n",
 							noneEmotion, joyEmotion, surprizeEmotion, angerEmotion, sorrowEmotion, totalEmotion-100); 
+							msg->set("noneEmo", std::to_string(noneEmotion));
+							msg->set("joyEmo", std::to_string(joyEmotion));
+							msg->set("surprizeEmo", std::to_string(surprizeEmotion));
+							msg->set("angerEmo", std::to_string(angerEmotion));
+							msg->set("sorrowEmo", std::to_string(sorrowEmotion));
+							msg->set("totalEmo", std::to_string(totalEmotion));
 						}
 						if(0b00000010 & command[5]){
 							//顔認証
@@ -253,8 +270,11 @@ int main(){
 								//おかしい
 							}else{
 								printf("userid:%d\n",userid);
+								msg->set("userid", std::to_string(userid));
 							}
 						}
+						logger->emit(msg);
+						delete logger;
 					}
 
 					free(bodyResult);
