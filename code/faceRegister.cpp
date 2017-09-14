@@ -27,7 +27,7 @@ unsigned char* getRegisterCommand(){
 	command[1] = 0x10;
 	command[2] = 0x03;
 	command[3] = 0x00;
-	command[4] = 0x00; //IDのLSB
+	command[4] = 0x02; //IDのLSB
 	command[5] = 0x00; //IDのMSB
 	command[6] = 0x00; //データID
 
@@ -141,29 +141,31 @@ int main(){
 						//帰ってきたデータ長を求める
 						unsigned int responseBytes;
 						responseBytes = getResponseBytes(fd);
-						printf("responseBytes = %d\n", responseBytes);
-						getResponseImage(fd);
+                        if(responseBytes > 4){
 
-						//機器のROMに登録
-						command = getRegisterToRom();
-						serialFlush(fd);
-						for(int i=0; i<sendCommandBytes; i++){
-							serialPutchar(fd, command[i]);
-						}
-										
-						if(serialDataAvail(fd)){
-							if(responseIsErr(fd) == 1){
-								printf("ヘッダー部がおかしかった\n");
-							}else{
-								printf("%d\n",getResponseBytes(fd));
-							}
-						}
+                            printf("responseBytes = %d\n", responseBytes);
+                            getResponseImage(fd);
 
-											
-						printf("登録しました\n");
-						break;
+                            //機器のROMに登録
+                            command = getRegisterToRom();
+                            serialFlush(fd);
+                            for(int i=0; i<sendCommandBytes; i++){
+                                serialPutchar(fd, command[i]);
+                            }
+                                            
+                            if(serialDataAvail(fd)){
+                                if(responseIsErr(fd) == 1){
+                                    printf("ヘッダー部がおかしかった\n");
+                                }else{
+                                    printf("%d\n",getResponseBytes(fd));
+                                }
+                            }
+
+                            printf("登録しました\n");
+                            break;
+                        }
 					}
 				}
 			}
-	}
+    }
 }
