@@ -47,6 +47,19 @@ unsigned char* getRegisterToRom(){
 	return command;
 }
 
+unsigned char* getRegisterAlbum(int* sendCommandBytes){
+    unsigned char* command;
+    *sendCommandBytes = 4;
+    command = (unsigned char*)malloc(sizeof(unsigned char)*(*sendCommandBytes));
+    command[0] = 0xFE;
+    command[1] = 0x20;
+    command[2] = 0x00;
+    command[3] = 0x00;
+
+    return command;
+}
+
+
 //ヘッダー部が正しければ1を返す
 int responseIsErr(int fd){
 	if(serialGetchar(fd) != 0xFE){
@@ -109,63 +122,78 @@ void getResponseImage(int fd){
 
 
 int main(){
-	int fd; //シリアル通信のID的なもの
-	unsigned char* command;
-	/*シリアルオープン*/
-	fd = serialOpen(serialPath, baudrate);
-		if(fd < 0){
-			//シリアルオープンに失敗
-			printf("can not open %s \n", serialPath);
-		}else{
-			//シリアルオープンに成功
-			printf("open %s \n",serialPath);
-			command = getRegisterCommand();
-			printf("sended\n");
+  int fd; //シリアル通信のID的なもの
+  unsigned char* command;
+  /*シリアルオープン*/
+  fd = serialOpen(serialPath, baudrate);
+  if(fd < 0){
+    //シリアルオープンに失敗
+    printf("can not open %s \n", serialPath);
+  }else{
+    //シリアルオープンに成功
+    printf("open %s \n",serialPath);
+    command = getRegisterCommand();
+    printf("sended\n");
 
-			while(1){
-				//送信中のデータなどは一度破棄する
-				serialFlush(fd);
-				for(int i=0; i<sendCommandBytes; i++){
-					serialPutchar(fd, command[i]);
-				}
-				delay(100);
+    while(1){
+      //送信中のデータなどは一度破棄する
+      serialFlush(fd);
+      for(int i=0; i<sendCommandBytes; i++){
+        serialPutchar(fd, command[i]);
+      }
+      delay(100);
 
-				if(serialDataAvail(fd)){
-					//結果が帰ってきたあとの処理
-				
-					//ヘッダー部を解析してエラーが出たら終了
-					if(responseIsErr(fd) == 1){
-						printf("ヘッダー部がおかしかった\n");
-					}else{
-						//正常にレスポンスがあるので中身を見ていく
-						//帰ってきたデータ長を求める
-						unsigned int responseBytes;
-						responseBytes = getResponseBytes(fd);
-                        if(responseBytes > 4){
+      if(serialDataAvail(fd)){
+        //結果が帰ってきたあとの処理
+    
+        //ヘッダー部を解析してエラーが出たら終了
+        if(responseIsErr(fd) == 1){
+          printf("ヘッダー部がおかしかった\n");
+        }else{
+          //正常にレスポンスがあるので中身を見ていく
+          //帰ってきたデータ長を求める
+          unsigned int responseBytes;
+          responseBytes = getResponseBytes(fd);
+          if(responseBytes > 4){
+            printf("responseBytes = %d\n", responseBytes);
+            getResponseImage(fd);
 
-                            printf("responseBytes = %d\n", responseBytes);
-                            getResponseImage(fd);
+            //機器のROMに登録
+            command = getRegisterToRom();
+            serialFlush(fd);
+            for(int i=0; i<sendCommandBytes; i++){
+                serialPutchar(fd, command[i]);
+            }
+            delay(100);             
+            if(serialDataAvail(fd)){
+              if(responseIsErr(fd) == 1){
+                  printf("ヘッダー部がおかしかった\n");
+              }else{
+                  printf("%d\n",getResponseBytes(fd));
+              }
+            }
+            getResponseImage(fd);
+            delay(100);
+            //ホストのアルバムに保存
+            command = getRegisterAlbum(&sendCommandBytes);
+            serialFlush(fd);
+            for(int i=0; i<sendCommandBytes; i++){
+              serialPutchar(fd, command[i]);
+            }
+            delay(100);
+            if(serialDataAvail(fd)){
+              if(responseIsErr(fd) == 1){ 
+                printf("ヘッダー部がおかしかった\n");
+              }else{
+                printf("%d\n",getResponseBytes(fd));
+              }   
+            }
+            printf("登録した\n");
+            break;
 
-                            //機器のROMに登録
-                            command = getRegisterToRom();
-                            serialFlush(fd);
-                            for(int i=0; i<sendCommandBytes; i++){
-                                serialPutchar(fd, command[i]);
-                            }
-                                            
-                            if(serialDataAvail(fd)){
-                                if(responseIsErr(fd) == 1){
-                                    printf("ヘッダー部がおかしかった\n");
-                                }else{
-                                    printf("%d\n",getResponseBytes(fd));
-                                }
-                            }
-
-                            printf("登録しました\n");
-                            break;
-                        }
-					}
-				}
-			}
+          }
+        }
+      }
     }
+  }
 }
