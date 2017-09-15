@@ -6,6 +6,7 @@
 #include <wiringSerial.h>
 #include <sys/ioctl.h>
 #include <fluent.hpp>
+#include "hvcp2-lib.h"
 
 //検出結果を格納する構造体
 typedef struct{
