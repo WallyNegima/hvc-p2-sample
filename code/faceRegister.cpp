@@ -6,59 +6,10 @@
 #include <wiringSerial.h>
 #include <sys/ioctl.h>
 #include <fluent.hpp>
-
-//検出結果を格納する構造体
-typedef struct{
-		long posX;
-		long posY;
-		long size; //物体を正方形の領域で検出する．その時の一辺のピクセル数
-		long confidence; //信頼度
-}RESULT;
-
+#include "hvcp2-lib.h"
 const char* serialPath = "/dev/hvcp2";
 const int baudrate = 9600;
 int sendCommandBytes = 0; //カメラへ送信するコマンドが何バイトなのか保存
-
-//顔や体などを検出する際に用いるコマンドを返す
-unsigned char* getRegisterCommand(){
-	unsigned char* command;
-	command = (unsigned char*)malloc(sizeof(unsigned char)*7);
-	command[0] = 0xFE;
-	command[1] = 0x10;
-	command[2] = 0x03;
-	command[3] = 0x00;
-	command[4] = 0x02; //IDのLSB
-	command[5] = 0x00; //IDのMSB
-	command[6] = 0x00; //データID
-
-	sendCommandBytes = 7;
-	return command;
-}
-
-unsigned char* getRegisterToRom(){
-	unsigned char* command;
-	command = (unsigned char*)malloc(sizeof(unsigned char)*4);
-	command[0] = 0xFE;
-	command[1] = 0x22;
-	command[2] = 0x00;
-	command[3] = 0x00;
-
-	sendCommandBytes = 4;
-	return command;
-}
-
-unsigned char* getRegisterAlbum(int* sendCommandBytes){
-    unsigned char* command;
-    *sendCommandBytes = 4;
-    command = (unsigned char*)malloc(sizeof(unsigned char)*(*sendCommandBytes));
-    command[0] = 0xFE;
-    command[1] = 0x20;
-    command[2] = 0x00;
-    command[3] = 0x00;
-
-    return command;
-}
-
 
 //ヘッダー部が正しければ1を返す
 int responseIsErr(int fd){
@@ -132,7 +83,7 @@ int main(){
   }else{
     //シリアルオープンに成功
     printf("open %s \n",serialPath);
-    command = getRegisterCommand();
+    command = getRegisterCommand(&sendCommandBytes);
     printf("sended\n");
 
     while(1){
@@ -159,7 +110,7 @@ int main(){
             getResponseImage(fd);
 
             //機器のROMに登録
-            command = getRegisterToRom();
+            command = getRegisterToRom(&sendCommandBytes);
             serialFlush(fd);
             for(int i=0; i<sendCommandBytes; i++){
                 serialPutchar(fd, command[i]);
@@ -172,7 +123,6 @@ int main(){
                   printf("%d\n",getResponseBytes(fd));
               }
             }
-            getResponseImage(fd);
             delay(100);
             //ホストのアルバムに保存
             command = getRegisterAlbum(&sendCommandBytes);

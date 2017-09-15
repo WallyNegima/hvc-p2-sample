@@ -91,3 +91,34 @@ unsigned char* getSeachCommand(int* sendCommandBytes){
 
   return command;
 }
+
+
+//顔や体などを検出する際に用いるコマンドを返す
+unsigned char* getRegisterCommand(int* sendCommandBytes){
+  unsigned char* command;
+  *sendCommandBytes = 7;
+  command = (unsigned char*)malloc(sizeof(unsigned char)*(*sendCommandBytes));
+  command[0] = 0xFE;
+  command[1] = 0x10;
+  command[2] = 0x03;
+  command[3] = 0x00;
+  command[4] = 0x02; //IDのLSB
+  command[5] = 0x00; //IDのMSB
+  command[6] = 0x00; //データID
+
+  return command;
+}
+
+unsigned char* getRegisterToRom(int* sendCommandBytes){
+  unsigned char* command;
+  *sendCommandBytes = 4;
+  command = (unsigned char*)malloc(sizeof(unsigned char)*(*sendCommandBytes));
+  command[0] = 0xFE;
+  command[1] = 0x22;
+  command[2] = 0x00;
+  command[3] = 0x00;
+
+  return command;
+}
+
+
