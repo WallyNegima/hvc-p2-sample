@@ -61,7 +61,7 @@ unsigned char* getReadCameraAngle(int* sendCommandBytes){
 unsigned char* getSeachCommand(int* sendCommandBytes){
   unsigned char* command;
   *sendCommandBytes = 7;
-  command = (unsigned char*)malloc(sizeof(unsigned char)*sendCommandBytes);
+  command = (unsigned char*)malloc(sizeof(unsigned char)*(*sendCommandBytes));
   command[0] = 0xFE;
   command[1] = 0x04;
   command[2] = 0x03;

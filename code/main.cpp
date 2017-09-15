@@ -21,41 +21,6 @@ const int baudrate = 9600;
 int sendCommandBytes = 0; //カメラへ送信するコマンドが何バイトなのか保存
 
 
-//顔や体などを検出する際に用いるコマンドを返す
-unsigned char* getSeachCommand(){
-	unsigned char* command;
-	command = (unsigned char*)malloc(sizeof(unsigned char)*7);
-	command[0] = 0xFE;
-	command[1] = 0x04;
-	command[2] = 0x03;
-	command[3] = 0x00;
-	command[4] = 0b00110100; 
-	/*
-	bit7:目つむり
-	bit6:視線
-	bit5:性別
-	bit4:年齢
-	bit3:顔向き
-	bit2:顔検出
-	bit1:手検出
-	bit0:人体検出
-	*/
-	command[5] = 0b00000011;
-	/*
-	bit1:顔認証
-	bit0:表情
-	*/
-	command[6] = 0x00;
-	/*
-	0x00 no image
-	0x01 320*240
-	0x02 160*120
-	*/
-
-	sendCommandBytes = 7;
-	return command;
-}
-
 //ヘッダー部が正しければ1を返す
 int responseIsErr(int fd){
 	if(serialGetchar(fd) != 0xFE){
@@ -156,7 +121,7 @@ int main(){
 	}else{
 		//シリアルオープンに成功
 		printf("open %s \n",serialPath);
-		command = getSeachCommand();
+		command = getSeachCommand(&sendCommandBytes);
 		
 		while(1){
 			//送信中のデータなどは一度破棄する
