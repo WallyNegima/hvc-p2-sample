@@ -12,32 +12,6 @@
 const char* serialPath = "/dev/hvcp2";
 const int baudrate = 9600;
 
-
-
-//ヘッダー部が正しければ1を返す
-int responseIsErr(int fd){
-	if(serialGetchar(fd) != 0xFE){
-		return 1;
-	}
-	if(serialGetchar(fd) != 0x00){
-		return 1;
-	}
-	return -1;
-}
-
-//返ってきたデータのバイト数を返す
-unsigned int getResponseBytes(int fd){
-	unsigned char tmp_datasize[4];
-	unsigned int datasize;
-	//printf("datasize:");
-	for(int i=0; i<4; i++){
-	tmp_datasize[i] = serialGetchar(fd);
-	}
-	datasize = (long)tmp_datasize[0];
-	datasize = datasize | (tmp_datasize[1] << 8) | (tmp_datasize[2] << 16) | (tmp_datasize[3] << 24);
-	return datasize;
-}
-
 //順番通りに並び替え，数値にして返す
 int getMSBLSB(int fd){
 	int lsb = serialGetchar(fd);
@@ -60,6 +34,7 @@ int main(){
       printf("-----------\n");
       printf("使いたいコマンドを選んで\n");
       printf("0:ROMデータを初期化\n");
+			printf("1:アルバムデータをホストからカメラへ\n");
       printf("99:プログラムを終了\n");
 
       char input[16];
@@ -90,15 +65,33 @@ int main(){
         int sendCommandBytes;
         command = resetROMData(&sendCommandBytes);
         sendCommand(sendCommandBytes, fd, command);
-        if(responseIsErr(fd) == 1){
+				delay(500);
+        if(checkResponse(fd) == 1){
           //err
           printf("error header\n");
         }else{
-          int responseBytes;
-          responseBytes = getResponseBytes(fd);
-          printf("ok response id %d bytes\n", responseBytes);
+          printf("ok\n");
         }
-      }
+      }else if(commandNum == 1){
+				unsigned char* command;
+				int sendCommandBytes;
+				int albumSize, dataSize, CRC;
+				command = readAlbumToCamera(&sendCommandBytes);
+				sendCommand(sendCommandBytes, fd, command);
+				delay(500);
+				if(checkResponse(fd) == 1){
+				}else{
+					dataSize = getAlbumSize(fd);
+					printf("data size is %d bytes\n", dataSize);
+					albumSize = getAlbumSize(fd);
+					printf("album size is %d bytes\n", albumSize);
+					CRC = getAlbumSize(fd);
+					printf("CRC is %d\n", CRC);
+					for(int i=0; i<albumSize; i++){
+						printf("%d ", serialGetchar(fd));
+					}
+				}
+			}
     }
   }		
 	serialClose(fd);

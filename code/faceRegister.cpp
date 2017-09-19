@@ -10,31 +10,6 @@
 const char* serialPath = "/dev/hvcp2";
 const int baudrate = 9600;
 int sendCommandBytes = 0; //カメラへ送信するコマンドが何バイトなのか保存
-/*
-//ヘッダー部が正しければ1を返す
-int responseIsErr(int fd){
-	if(serialGetchar(fd) != 0xFE){
-		return 1;
-	}
-	if(serialGetchar(fd) != 0x00){
-		return 1;
-	}
-	return -1;
-}
-
-//返ってきたデータのバイト数を返す
-unsigned int getResponseBytes(int fd){
-	unsigned char tmp_datasize[4];
-	unsigned int datasize;
-	//printf("datasize:");
-	for(int i=0; i<4; i++){
-		tmp_datasize[i] = serialGetchar(fd);
-	}
-	datasize = (long)tmp_datasize[0];
-	datasize = datasize | (tmp_datasize[1] << 8) | (tmp_datasize[2] << 16) | (tmp_datasize[3] << 24);
-	return datasize;
-}
-*/
 
 //LSB MSB の順に値を取得し
 //順番通りに並び替え，数値にして返す
@@ -106,30 +81,40 @@ int main(int argc, char* argv[]){
         //ヘッダー部を解析してエラーが出たら終了
         unsigned int responseBytes;
         responseBytes = checkResponse(fd);
-        if( responseBytes == 0){
+        if( responseBytes == 1){
           printf("ヘッダー部がおかしかった\n");
         }else{
           //正常にレスポンスがあるので中身を見ていく
           if(responseBytes > 4){
             getResponseImage(fd);
-
+						delay(300);
             //機器のROMに登録
             command = getRegisterToRom(&sendCommandBytes);
             sendCommand(sendCommandBytes, fd, command);
-            delay(100);             
+            delay(500);             
             if(serialDataAvail(fd)){
               checkResponse(fd);
             }
-            delay(100);
             //ホストのアルバムに保存
             command = saveAlbumToHost(&sendCommandBytes);
             sendCommand(sendCommandBytes, fd, command);
-            delay(100);
+            delay(500);
             if(serialDataAvail(fd)){
-              if(checkResponse(fd) > 0){
-                for(int i=0; i<responseBytes; i++){
-                  printf("%d ", serialGetchar(fd));
-                }
+							int dataSize, albumSize, CRC;
+							dataSize = checkResponse(fd);		
+              if(dataSize > 1){
+								albumSize = getAlbumSize(fd);
+								printf("albumSize %d \n",albumSize);
+								CRC = getAlbumSize(fd);
+								printf("CRC %d \n", CRC);
+								char text[128] = {'\0'} ;
+								snprintf(text, 128, "echo %d,%d,%d > album.txt", dataSize,albumSize,CRC);
+								system(text);
+								while(serialDataAvail(fd)){
+									int albumData = serialGetchar(fd);
+									snprintf(text, 128, "echo %d >> album.txt", albumData);
+									system(text);
+								}
               }
             }
             printf("登録した\n");

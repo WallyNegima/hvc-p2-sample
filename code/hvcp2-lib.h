@@ -37,6 +37,18 @@ unsigned char* readAlbumToCamera(int* sendCommandBytes){
   return command;
 }
 
+ int getAlbumSize(int fd){
+	int albumSize;
+	int lsb_l, lsb_m, msb_l, msb_m; //msb_m msb_l lsb_m lsb_l の順番
+	lsb_l = serialGetchar(fd);
+	lsb_m = serialGetchar(fd);
+	msb_l = serialGetchar(fd);
+	msb_m = serialGetchar(fd);
+	albumSize =lsb_l;
+	albumSize = albumSize | (lsb_m << 8) | (msb_l << 16) | (msb_m << 24);
+	return albumSize;
+}
+
 //ex. getSetCameraAngle(sendCBytes, 0); -> 0度に設定
 //ex. getSetCameraAngle(sendCBytes, 1); -> 90度に設定
 unsigned char* getSetCameraAngle(int* sendCommandBytes, int angle){
@@ -186,7 +198,7 @@ unsigned int checkResponse(int fd){
   unsigned int responseBytes;
   if(responseIsErr(fd) == 1){
     printf("header err\n");
-    return 0;
+    return 1;
   }else{
     responseBytes = getResponseBytes(fd);
     printf("seponse is %d bytes\n", responseBytes);
