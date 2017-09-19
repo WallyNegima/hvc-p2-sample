@@ -127,7 +127,7 @@ int main(){
 			//送信中のデータなどは一度破棄する
 			sendCommand(sendCommandBytes, fd, command);
       printf("sended\n");
-      delay(300);
+      delay(500);
 
       if(serialDataAvail(fd)){
 				//結果が帰ってきたあとの処理
@@ -234,7 +234,6 @@ int main(){
 						logger->emit(msg);
 						delete logger;
 					}
-          printf("-------------\n");
 
 					free(bodyResult);
 					free(handResult);
@@ -245,7 +244,9 @@ int main(){
 					}
 				}
 			}
-      delay(2000);
+      printf("-------------\n");
+			delay(2000);
+			
 		}
 	}
 	serialClose(fd);
