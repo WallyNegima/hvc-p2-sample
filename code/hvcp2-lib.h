@@ -124,8 +124,9 @@ unsigned char* getRegisterToRom(int* sendCommandBytes){
 }
 
 //コマンドを送信
-void sendCommand(int sendCommandBytes, int fd, char* command){
+void sendCommand(int sendCommandBytes, int fd, unsigned char* command){
   for(int i=0; i<sendCommandBytes; i++){
-    serialPutchar(fd, command[i]):
+    serialPutchar(fd, command[i]);
   }
 }
+

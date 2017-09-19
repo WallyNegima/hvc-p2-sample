@@ -126,10 +126,8 @@ int main(){
 		while(1){
 			//送信中のデータなどは一度破棄する
 			serialFlush(fd);
-			for(int i=0; i<sendCommandBytes; i++){
-				serialPutchar(fd, command[i]);
-			}
-			delay(100);
+			sendCommand(sendCommandBytes, fd, command);
+      delay(100);
 
 			if(serialDataAvail(fd)){
 				//結果が帰ってきたあとの処理
