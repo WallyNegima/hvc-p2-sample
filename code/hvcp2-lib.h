@@ -3,6 +3,8 @@
 #include <unistd.h>
 #include <stdint.h>
 #include <sys/ioctl.h>
+#include <wiringPi.h>
+#include <wiringSerial.h>
 
 /*
 コマンドを返すだけのライブラリ
@@ -121,4 +123,9 @@ unsigned char* getRegisterToRom(int* sendCommandBytes){
   return command;
 }
 
-
+//コマンドを送信
+void sendCommand(int sendCommandBytes, int fd, char* command){
+  for(int i=0; i<sendCommandBytes; i++){
+    serialPutchar(fd, command[i]):
+  }
+}

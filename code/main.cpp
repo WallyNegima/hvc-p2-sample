@@ -242,6 +242,7 @@ int main(){
 						logger->emit(msg);
 						delete logger;
 					}
+          printf("-------------\n");
 
 					free(bodyResult);
 					free(handResult);
