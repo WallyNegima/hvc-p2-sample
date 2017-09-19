@@ -72,9 +72,14 @@ void getResponseImage(int fd){
 		
 
 
-int main(){
+int main(int argc, char* argv[]){
   int fd; //シリアル通信のID的なもの
   unsigned char* command;
+
+  if(argc != 3 ){
+    printf("userid, userdata を入力して実行して下さい\n");
+  }
+
   /*シリアルオープン*/
   fd = serialOpen(serialPath, baudrate);
   if(fd < 0){
@@ -83,15 +88,16 @@ int main(){
   }else{
     //シリアルオープンに成功
     printf("open %s \n",serialPath);
-    command = getRegisterCommand(&sendCommandBytes);
-    printf("sended\n");
+    unsigned short userid;
+    unsigned char dataid;
+    userid = atoi(argv[1]);
+    dataid = atoi(argv[2]);
+    command = getRegisterCommand(&sendCommandBytes, userid, dataid);
 
     while(1){
       //送信中のデータなどは一度破棄する
-      serialFlush(fd);
-      for(int i=0; i<sendCommandBytes; i++){
-        serialPutchar(fd, command[i]);
-      }
+      sendCommand(sendCommandBytes, fd, command);
+      printf("sended\n");
       delay(100);
 
       if(serialDataAvail(fd)){
@@ -111,10 +117,7 @@ int main(){
 
             //機器のROMに登録
             command = getRegisterToRom(&sendCommandBytes);
-            serialFlush(fd);
-            for(int i=0; i<sendCommandBytes; i++){
-                serialPutchar(fd, command[i]);
-            }
+            sendCommand(sendCommandBytes, fd, command);
             delay(100);             
             if(serialDataAvail(fd)){
               if(responseIsErr(fd) == 1){
@@ -125,17 +128,18 @@ int main(){
             }
             delay(100);
             //ホストのアルバムに保存
-            command = getRegisterAlbum(&sendCommandBytes);
-            serialFlush(fd);
-            for(int i=0; i<sendCommandBytes; i++){
-              serialPutchar(fd, command[i]);
-            }
+            command = saveAlbumToHost(&sendCommandBytes);
+            sendCommand(sendCommandBytes, fd, command);
             delay(100);
             if(serialDataAvail(fd)){
               if(responseIsErr(fd) == 1){ 
                 printf("ヘッダー部がおかしかった\n");
               }else{
-                printf("%d\n",getResponseBytes(fd));
+                responseBytes = getResponseBytes(fd);
+                printf("%d\n",responseBytes);
+                for(int i=0; i<responseBytes; i++){
+                  printf("%d ", serialGetchar(fd));
+                }
               }   
             }
             printf("登録した\n");

@@ -125,8 +125,8 @@ int main(){
 		
 		while(1){
 			//送信中のデータなどは一度破棄する
-			serialFlush(fd);
 			sendCommand(sendCommandBytes, fd, command);
+      printf("sended\n");
       delay(100);
 
 			if(serialDataAvail(fd)){

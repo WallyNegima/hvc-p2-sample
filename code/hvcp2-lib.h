@@ -12,13 +12,26 @@
 
 //intにはコマンドのバイト数を格納
 //コマンドのバイト列を返す
-unsigned char* getRegisterAlbum(int* sendCommandBytes){
+unsigned char* saveAlbumToHost(int* sendCommandBytes){
   unsigned char* command;
   *sendCommandBytes = 4;
   command = (unsigned char*)malloc(sizeof(unsigned char)*(*sendCommandBytes));
   command[0] = 0xFE;
   command[1] = 0x20;
   command[2] = 0x00;
+  command[3] = 0x00;
+
+  return command;
+}
+
+//アルバムをホストからカメラへ引っ張る
+unsigned char* readAlbumToCamera(int* sendCommandBytes){
+  unsigned char* command;
+  *sendCommandBytes = 4;
+  command = (unsigned char*)malloc(sizeof(unsigned char)*(*sendCommandBytes));
+  command[0] = 0xFE;
+  command[1] = 0x21;
+  command[2] = 0x04;
   command[3] = 0x00;
 
   return command;
@@ -47,6 +60,7 @@ unsigned char* getSetCameraAngle(int* sendCommandBytes, int angle){
   return command;
 }
 
+//カメラアングルの情報を取得
 unsigned char* getReadCameraAngle(int* sendCommandBytes){
   unsigned char* command;
   *sendCommandBytes = 4;
@@ -59,7 +73,7 @@ unsigned char* getReadCameraAngle(int* sendCommandBytes){
   return command; 
 }
 
-
+//顔や体を検出するコマンド
 unsigned char* getSeachCommand(int* sendCommandBytes){
   unsigned char* command;
   *sendCommandBytes = 7;
@@ -95,8 +109,8 @@ unsigned char* getSeachCommand(int* sendCommandBytes){
 }
 
 
-//顔や体などを検出する際に用いるコマンドを返す
-unsigned char* getRegisterCommand(int* sendCommandBytes){
+//顔を登録するコマンドを返す
+unsigned char* getRegisterCommand(int* sendCommandBytes, unsigned short userid, unsigned char dataid){
   unsigned char* command;
   *sendCommandBytes = 7;
   command = (unsigned char*)malloc(sizeof(unsigned char)*(*sendCommandBytes));
@@ -104,13 +118,14 @@ unsigned char* getRegisterCommand(int* sendCommandBytes){
   command[1] = 0x10;
   command[2] = 0x03;
   command[3] = 0x00;
-  command[4] = 0x02; //IDのLSB
-  command[5] = 0x00; //IDのMSB
-  command[6] = 0x00; //データID
+  command[4] = userid & 0b00001111; //IDのLSB
+  command[5] = userid & 0b11110000; //IDのMSB
+  command[6] = dataid; //データID
 
   return command;
 }
 
+//ROMに顔データを保存
 unsigned char* getRegisterToRom(int* sendCommandBytes){
   unsigned char* command;
   *sendCommandBytes = 4;
@@ -122,11 +137,60 @@ unsigned char* getRegisterToRom(int* sendCommandBytes){
 
   return command;
 }
+//ROMのアルバムデータをフォーマット
+unsigned char* resetROMData(int* sendCommandBytes){
+  unsigned char* command;
+  *sendCommandBytes = 4;
+  command = (unsigned char*)malloc(sizeof(unsigned char)*(*sendCommandBytes));
+  command[0] = 0xFE;
+  command[1] = 0x30;
+  command[2] = 0x00;
+  command[3] = 0x00;
 
+  return command;
+}
 //コマンドを送信
 void sendCommand(int sendCommandBytes, int fd, unsigned char* command){
+  serialFlush(fd);
   for(int i=0; i<sendCommandBytes; i++){
     serialPutchar(fd, command[i]);
   }
+}
+
+//ヘッダー部が正しければ1を返す
+int responseIsErr(int fd){
+  if(serialGetchar(fd) != 0xFE){
+    return 1;
+  }
+  if(serialGetchar(fd) != 0x00){
+    return 1;
+  }
+  return -1;
+}
+
+//返ってきたデータのバイト数を返す
+unsigned int getResponseBytes(int fd){
+  unsigned char tmp_datasize[4];
+  unsigned int datasize;
+  //printf("datasize:");
+  for(int i=0; i<4; i++){
+    tmp_datasize[i] = serialGetchar(fd);
+  }
+  datasize = (long)tmp_datasize[0];
+  datasize = datasize | (tmp_datasize[1] << 8) | (tmp_datasize[2] << 16) | (tmp_datasize[3] << 24);
+  return datasize;
+}
+
+//レスポンスをチェックする
+unsigned int checkResponse(int fd){
+  if(responseIsErr(fd) == 1){
+    printf("header err\n");
+  }else{
+    unsigned int responseBytes;
+    responseBytes = getResponseBytes(fd);
+    printf("seponse is %d bytes\n", responseBytes);
+  }
+
+  return responseBytes;
 }
 
