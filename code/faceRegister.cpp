@@ -10,7 +10,7 @@
 const char* serialPath = "/dev/hvcp2";
 const int baudrate = 9600;
 int sendCommandBytes = 0; //カメラへ送信するコマンドが何バイトなのか保存
-
+/*
 //ヘッダー部が正しければ1を返す
 int responseIsErr(int fd){
 	if(serialGetchar(fd) != 0xFE){
@@ -34,7 +34,7 @@ unsigned int getResponseBytes(int fd){
 	datasize = datasize | (tmp_datasize[1] << 8) | (tmp_datasize[2] << 16) | (tmp_datasize[3] << 24);
 	return datasize;
 }
-
+*/
 
 //LSB MSB の順に値を取得し
 //順番通りに並び替え，数値にして返す
@@ -104,15 +104,13 @@ int main(int argc, char* argv[]){
         //結果が帰ってきたあとの処理
     
         //ヘッダー部を解析してエラーが出たら終了
-        if(responseIsErr(fd) == 1){
+        unsigned int responseBytes;
+        responseBytes = checkResponse(fd);
+        if( responseBytes == 0){
           printf("ヘッダー部がおかしかった\n");
         }else{
           //正常にレスポンスがあるので中身を見ていく
-          //帰ってきたデータ長を求める
-          unsigned int responseBytes;
-          responseBytes = getResponseBytes(fd);
           if(responseBytes > 4){
-            printf("responseBytes = %d\n", responseBytes);
             getResponseImage(fd);
 
             //機器のROMに登録
@@ -120,11 +118,7 @@ int main(int argc, char* argv[]){
             sendCommand(sendCommandBytes, fd, command);
             delay(100);             
             if(serialDataAvail(fd)){
-              if(responseIsErr(fd) == 1){
-                  printf("ヘッダー部がおかしかった\n");
-              }else{
-                  printf("%d\n",getResponseBytes(fd));
-              }
+              checkResponse(fd);
             }
             delay(100);
             //ホストのアルバムに保存
@@ -132,19 +126,14 @@ int main(int argc, char* argv[]){
             sendCommand(sendCommandBytes, fd, command);
             delay(100);
             if(serialDataAvail(fd)){
-              if(responseIsErr(fd) == 1){ 
-                printf("ヘッダー部がおかしかった\n");
-              }else{
-                responseBytes = getResponseBytes(fd);
-                printf("%d\n",responseBytes);
+              if(checkResponse(fd) > 0){
                 for(int i=0; i<responseBytes; i++){
                   printf("%d ", serialGetchar(fd));
                 }
-              }   
+              }
             }
             printf("登録した\n");
             break;
-
           }
         }
       }

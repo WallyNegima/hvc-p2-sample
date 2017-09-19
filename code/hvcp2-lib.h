@@ -183,10 +183,11 @@ unsigned int getResponseBytes(int fd){
 
 //レスポンスをチェックする
 unsigned int checkResponse(int fd){
+  unsigned int responseBytes;
   if(responseIsErr(fd) == 1){
     printf("header err\n");
+    return 0;
   }else{
-    unsigned int responseBytes;
     responseBytes = getResponseBytes(fd);
     printf("seponse is %d bytes\n", responseBytes);
   }

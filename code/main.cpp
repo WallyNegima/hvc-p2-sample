@@ -20,7 +20,7 @@ const char* serialPath = "/dev/hvcp2";
 const int baudrate = 9600;
 int sendCommandBytes = 0; //カメラへ送信するコマンドが何バイトなのか保存
 
-
+/*
 //ヘッダー部が正しければ1を返す
 int responseIsErr(int fd){
 	if(serialGetchar(fd) != 0xFE){
@@ -44,7 +44,7 @@ unsigned int getResponseBytes(int fd){
 	datasize = datasize | (tmp_datasize[1] << 8) | (tmp_datasize[2] << 16) | (tmp_datasize[3] << 24);
 	return datasize;
 }
-
+*/
 void getObjectResult(RESULT* result, int fd){
 	int receiveData[8];
 	int i;
@@ -136,12 +136,6 @@ int main(){
 				if(responseIsErr(fd) == 1){
 					printf("ヘッダー部がおかしかった\n");
 				}else{
-					//正常にレスポンスがあるので中身を見ていく
-					//帰ってきたデータ長を求める
-					unsigned int responseBytes;
-					responseBytes = getResponseBytes(fd);
-					printf("responseBytes = %d\n", responseBytes);
-
 					//データの処理
 					//体，手，顔の検出数を取得
 					int bodyNum = 0;
