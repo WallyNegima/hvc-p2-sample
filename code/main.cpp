@@ -127,13 +127,13 @@ int main(){
 			//送信中のデータなどは一度破棄する
 			sendCommand(sendCommandBytes, fd, command);
       printf("sended\n");
-      delay(100);
+      delay(300);
 
-			if(serialDataAvail(fd)){
+      if(serialDataAvail(fd)){
 				//結果が帰ってきたあとの処理
 				
 				//ヘッダー部を解析してエラーが出たら終了
-				if(responseIsErr(fd) == 1){
+				if(checkResponse(fd) == 0){
 					printf("ヘッダー部がおかしかった\n");
 				}else{
 					//データの処理
@@ -244,8 +244,8 @@ int main(){
 						delay(5000);
 					}
 				}
-				delay(2000);
 			}
+      delay(2000);
 		}
 	}
 	serialClose(fd);
