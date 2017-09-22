@@ -7,45 +7,11 @@
 #include <sys/ioctl.h>
 #include <fluent.hpp>
 #include "hvcp2-lib.h"
+#include <sqlite3.h>
 const char* serialPath = "/dev/hvcp2";
 const int baudrate = 9600;
 int sendCommandBytes = 0; //カメラへ送信するコマンドが何バイトなのか保存
-
-//LSB MSB の順に値を取得し
-//順番通りに並び替え，数値にして返す
-int getMSBLSB(int fd){
-		int lsb = serialGetchar(fd);
-		int msb = serialGetchar(fd);
-		return lsb + (msb << 8);
-}
-
-//画像データを取得
-void getResponseImage(int fd){
-	unsigned char imageHead[4];
-	int imageWidth, imageHeight;
-	int pixelWidth, pixelHeight;
-	int pixel;
-	imageWidth = getMSBLSB(fd);
-	imageHeight = getMSBLSB(fd);
-	printf("width:%d height:%d¥n", imageWidth, imageHeight);
-	for(pixelHeight=0; pixelHeight<imageHeight; pixelHeight++){
-		for(pixelWidth=0; pixelWidth<imageWidth; pixelWidth++){
-				if(serialDataAvail(fd)){
-					pixel  = serialGetchar(fd);
-					printf("%x ", pixel);
-				}else{
-				}
-		}
-		if(serialDataAvail(fd)){
-			printf("\n");
-		}else{
-			printf("x=%d y=%d で終了\n", pixelWidth, pixelHeight);
-			break;
-		}
-	}
-}
-		
-
+const char* dbName = "user.db";
 
 int main(int argc, char* argv[]){
   int fd; //シリアル通信のID的なもの
@@ -63,6 +29,8 @@ int main(int argc, char* argv[]){
   }else{
     //シリアルオープンに成功
     printf("open %s \n",serialPath);
+		//登録するID=userid
+		//登録するデータ番号=dataid : 一人につき100枚まで登録可能
     unsigned short userid;
     unsigned char dataid;
     userid = atoi(argv[1]);
@@ -95,10 +63,11 @@ int main(int argc, char* argv[]){
             if(serialDataAvail(fd)){
               checkResponse(fd);
             }
+						printf("saved to ROM\n");
             //ホストのアルバムに保存
             command = saveAlbumToHost(&sendCommandBytes);
             sendCommand(sendCommandBytes, fd, command);
-            delay(500);
+            delay(700);
             if(serialDataAvail(fd)){
 							int dataSize, albumSize, CRC;
 							dataSize = checkResponse(fd);		
@@ -107,6 +76,7 @@ int main(int argc, char* argv[]){
 								printf("albumSize %d \n",albumSize);
 								CRC = getAlbumSize(fd);
 								printf("CRC %d \n", CRC);
+								//album.txtに全データを書き込む
 								char text[128] = {'\0'} ;
 								snprintf(text, 128, "echo %d,%d,%d > album.txt", dataSize,albumSize,CRC);
 								system(text);
@@ -116,8 +86,67 @@ int main(int argc, char* argv[]){
 									system(text);
 								}
               }
-            }
-            printf("登録した\n");
+            }else{
+							printf("cannot save host's album\n");
+							return -1;
+						}
+						//DBに保存
+						sqlite3 *db=NULL;
+						char* errMsg = NULL;
+						int err;
+						int userID, userData; 
+						char* userName;
+						//  登録ID, 登録データ,登録名前
+						userID = atoi(argv[1]);
+						userData = atoi(argv[2]);
+						userName = argv[3];
+						sqlite3_stmt* stmt = NULL;
+						if( sqlite3_open(dbName, &db) != SQLITE_OK){
+							printf("db err\n");
+							return -1;
+						}
+						//DBに登録されているIDかどうかをチェック
+						err = sqlite3_prepare_v2(db, "SELECT * FROM users", 64, &stmt, NULL);
+						if(err != SQLITE_OK){
+							printf("select is not ok\n");
+							return -1;
+						}
+						//データの抽出
+						int count=0;
+						while(SQLITE_ROW == (err = sqlite3_step(stmt)) ){
+							int id = sqlite3_column_int(stmt, 0);
+							const unsigned char* name = sqlite3_column_text(stmt, 1);
+							printf("id:%d, name:%s\n", id, name);
+							count++;
+						}
+						if(err != SQLITE_DONE){
+							printf("抽出するところでエラー\n");
+							return -1;
+						}
+						sqlite3_finalize(stmt);
+
+						char query[256] = {'\0'};
+						//idとnameを登録
+						if(count == 0){
+							snprintf(query, 256, "INSERT INTO users(id, name) VALUES(%d, \"%s\")", userID,userName);
+						}else{
+							snprintf(query, 256, "UPDATE users SET id=%d, name=\"%s\" ", userID, userName);
+						}
+						//err = sqlite3_prepare16(db, "INSERT INTO users(id, name) VALUES(?, ?)",-1, &stmt, NULL);
+						printf("%s\n",query);
+						err = sqlite3_exec(db, query, NULL, NULL, &errMsg);
+						if( err != SQLITE_OK){
+							printf("err db exec\n");
+							return -1;
+						}
+						printf("ADD %s to id %d\n",userName, userID);
+						//DBを閉じる
+						if(sqlite3_close(db) != SQLITE_OK){
+							printf("err close\n");
+							return -1;
+						}
+						printf("db closed\n");
+            printf("register all success\n");
             break;
           }
         }

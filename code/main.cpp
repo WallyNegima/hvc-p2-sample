@@ -66,14 +66,6 @@ int getFacePos(RESULT* result){
 	return pos;
 }
 
-//LSB MSB の順に値を取得し
-//順番通りに並び替え，数値にして返す
-int getMSBLSB(int fd){
-	int lsb = serialGetchar(fd);
-	int msb = serialGetchar(fd);
-	return lsb + (msb << 8);
-}
-
 int getAge(int fd){
 	int age = serialGetchar(fd);
 	int reliability = getMSBLSB(fd);

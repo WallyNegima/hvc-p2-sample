@@ -161,6 +161,40 @@ unsigned char* resetROMData(int* sendCommandBytes){
 
   return command;
 }
+
+//LSB MSB の順に値を取得し
+//順番通りに並び替え，数値にして返す
+int getMSBLSB(int fd){
+	int lsb = serialGetchar(fd);
+	int msb = serialGetchar(fd);
+	return lsb + (msb << 8);
+}
+
+//画像データを取得
+void getResponseImage(int fd){
+	unsigned char imageHead[4];
+	int imageWidth, imageHeight;
+	int pixelWidth, pixelHeight;
+	int pixel;
+	imageWidth = getMSBLSB(fd);
+	imageHeight = getMSBLSB(fd);
+	printf("width:%d height:%d¥n", imageWidth, imageHeight);
+	for(pixelHeight=0; pixelHeight<imageHeight; pixelHeight++){
+		for(pixelWidth=0; pixelWidth<imageWidth; pixelWidth++){
+			if(serialDataAvail(fd)){
+				pixel  = serialGetchar(fd);
+				printf("%x ", pixel);
+			}else{
+			}
+		}
+		if(serialDataAvail(fd)){
+			printf("\n");
+		}else{
+			printf("x=%d y=%d で終了\n", pixelWidth, pixelHeight);
+			break;
+		}
+	}
+}
 //コマンドを送信
 void sendCommand(int sendCommandBytes, int fd, unsigned char* command){
   serialFlush(fd);
@@ -181,9 +215,9 @@ int responseIsErr(int fd){
 }
 
 //返ってきたデータのバイト数を返す
-unsigned int getResponseBytes(int fd){
+int getResponseBytes(int fd){
   unsigned char tmp_datasize[4];
-  unsigned int datasize;
+  int datasize;
   //printf("datasize:");
   for(int i=0; i<4; i++){
     tmp_datasize[i] = serialGetchar(fd);
@@ -194,14 +228,15 @@ unsigned int getResponseBytes(int fd){
 }
 
 //レスポンスをチェックする
-unsigned int checkResponse(int fd){
-  unsigned int responseBytes;
+int checkResponse(int fd){
+  int responseBytes;
   if(responseIsErr(fd) == 1){
     printf("header err\n");
     return 1;
   }else{
     responseBytes = getResponseBytes(fd);
     printf("seponse is %d bytes\n", responseBytes);
+		return responseBytes;
   }
 
   return responseBytes;
