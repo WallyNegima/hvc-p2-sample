@@ -7,9 +7,11 @@
 #include <sys/ioctl.h>
 #include <fluent.hpp>
 #include "hvcp2-lib.h"
+#include <sqlite3.h>
 const char* serialPath = "/dev/hvcp2";
 const int baudrate = 9600;
 int sendCommandBytes = 0; //カメラへ送信するコマンドが何バイトなのか保存
+const char* dbName = "user.db";
 
 //LSB MSB の順に値を取得し
 //順番通りに並び替え，数値にして返す
@@ -95,10 +97,11 @@ int main(int argc, char* argv[]){
             if(serialDataAvail(fd)){
               checkResponse(fd);
             }
+						printf("saved to ROM\n");
             //ホストのアルバムに保存
             command = saveAlbumToHost(&sendCommandBytes);
             sendCommand(sendCommandBytes, fd, command);
-            delay(500);
+            delay(700);
             if(serialDataAvail(fd)){
 							int dataSize, albumSize, CRC;
 							dataSize = checkResponse(fd);		
@@ -116,7 +119,35 @@ int main(int argc, char* argv[]){
 									system(text);
 								}
               }
-            }
+            }else{
+							printf("cannot save host's album\n");
+							return -1;
+						}
+						//DBに保存
+						sqlite3 *db=NULL;
+						char* errMsg = NULL;
+						int err;
+						sqlite3_stmt* stmt = NULL;
+						if( sqlite3_open(dbName, &db) != SQLITE_OK){
+							printf("db err\n");
+							return -1;
+						}
+						err = sqlite3_prepare16(db, "INSERT INTO users (id, name) VALUES (?, ?)",-1, &stmt, NULL);
+						if( err != SQLITE_OK){
+							printf("err db exec\n");
+							return -1;
+						}
+						//DB コマンド実行
+						sqlite3_bind_int(stmt, 1, atoi(argv[1]) );
+						sqlite3_bind_text(stmt, 2, argv[3], strlen(argv[3]), SQLITE_STATIC);
+						while(SQLITE_DONE != sqlite3_step(stmt)){}
+						sqlite3_finalize(stmt);
+						printf("ADD %s to id %d\n",argv[3], atoi(argv[1]));
+						if(sqlite3_close(db) != SQLITE_OK){
+							printf("err close\n");
+							return -1;
+						}
+						printf("db closed\n");
             printf("登録した\n");
             break;
           }
