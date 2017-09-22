@@ -127,22 +127,34 @@ int main(int argc, char* argv[]){
 						sqlite3 *db=NULL;
 						char* errMsg = NULL;
 						int err;
+						int userID, userData; 
+						char* userName;
+						//  登録ID, 登録データ,登録名前
+						userID = atoi(argv[1]);
+						userData = atoi(argv[2]);
+						userName = argv[3];
 						sqlite3_stmt* stmt = NULL;
 						if( sqlite3_open(dbName, &db) != SQLITE_OK){
 							printf("db err\n");
 							return -1;
 						}
-						err = sqlite3_prepare16(db, "INSERT INTO users (id, name) VALUES (?, ?)",-1, &stmt, NULL);
+						char query[256] = {'\0'};
+						snprintf(query, 256, "INSERT INTO users(id, name) VALUES(%d, \"%s\")", userID,userName);
+						//err = sqlite3_prepare16(db, "INSERT INTO users(id, name) VALUES(?, ?)",-1, &stmt, NULL);
+						printf("%s\n",query);
+						err = sqlite3_exec(db, query, NULL, NULL, &errMsg);
 						if( err != SQLITE_OK){
 							printf("err db exec\n");
 							return -1;
 						}
+						/*
 						//DB コマンド実行
 						sqlite3_bind_int(stmt, 1, atoi(argv[1]) );
 						sqlite3_bind_text(stmt, 2, argv[3], strlen(argv[3]), SQLITE_STATIC);
 						while(SQLITE_DONE != sqlite3_step(stmt)){}
 						sqlite3_finalize(stmt);
-						printf("ADD %s to id %d\n",argv[3], atoi(argv[1]));
+						*/
+						printf("ADD %s to id %d\n",userName, userID);
 						if(sqlite3_close(db) != SQLITE_OK){
 							printf("err close\n");
 							return -1;

@@ -181,9 +181,9 @@ int responseIsErr(int fd){
 }
 
 //返ってきたデータのバイト数を返す
-unsigned int getResponseBytes(int fd){
+int getResponseBytes(int fd){
   unsigned char tmp_datasize[4];
-  unsigned int datasize;
+  int datasize;
   //printf("datasize:");
   for(int i=0; i<4; i++){
     tmp_datasize[i] = serialGetchar(fd);
@@ -194,14 +194,15 @@ unsigned int getResponseBytes(int fd){
 }
 
 //レスポンスをチェックする
-unsigned int checkResponse(int fd){
-  unsigned int responseBytes;
+int checkResponse(int fd){
+  int responseBytes;
   if(responseIsErr(fd) == 1){
     printf("header err\n");
     return 1;
   }else{
     responseBytes = getResponseBytes(fd);
     printf("seponse is %d bytes\n", responseBytes);
+		return responseBytes;
   }
 
   return responseBytes;
