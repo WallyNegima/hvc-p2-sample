@@ -81,7 +81,7 @@ int main(int argc, char* argv[]){
 								snprintf(text, 128, "echo %d,%d,%d > album.txt", dataSize,albumSize,CRC);
 								system(text);
 								while(serialDataAvail(fd)){
-									int albumData = serialGetchar(fd);
+									int  albumData = serialGetchar(fd);
 									snprintf(text, 128, "echo %d >> album.txt", albumData);
 									system(text);
 								}

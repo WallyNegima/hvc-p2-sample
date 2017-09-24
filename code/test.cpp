@@ -12,13 +12,6 @@
 const char* serialPath = "/dev/hvcp2";
 const int baudrate = 9600;
 
-//順番通りに並び替え，数値にして返す
-int getMSBLSB(int fd){
-	int lsb = serialGetchar(fd);
-	int msb = serialGetchar(fd);
-	return lsb + (msb << 8);
-}
-
 int main(){
 	int fd; //シリアル通信のID的なもの
 	/*シリアルオープン*/
@@ -35,6 +28,7 @@ int main(){
       printf("使いたいコマンドを選んで\n");
       printf("0:ROMデータを初期化\n");
 			printf("1:アルバムデータをホストからカメラへ\n");
+			printf("2:カメラ内のアルバムデータをROMへ\n");
       printf("99:プログラムを終了\n");
 
       char input[16];
@@ -65,7 +59,6 @@ int main(){
         int sendCommandBytes;
         command = resetROMData(&sendCommandBytes);
         sendCommand(sendCommandBytes, fd, command);
-				delay(500);
         if(checkResponse(fd) == 1){
           //err
           printf("error header\n");
@@ -75,24 +68,24 @@ int main(){
       }else if(commandNum == 1){
 				unsigned char* command;
 				int sendCommandBytes;
-				int albumSize, dataSize, CRC;
-				command = readAlbumToCamera(&sendCommandBytes);
-				sendCommand(sendCommandBytes, fd, command);
-				delay(500);
+				command = readAlbumToCamera(&sendCommandBytes, fd);
+				//sendCommand(sendCommandBytes, fd, command);
 				if(checkResponse(fd) == 1){
-				}else{
-					dataSize = getAlbumSize(fd);
-					printf("data size is %d bytes\n", dataSize);
-					albumSize = getAlbumSize(fd);
-					printf("album size is %d bytes\n", albumSize);
-					CRC = getAlbumSize(fd);
-					printf("CRC is %d\n", CRC);
-					for(int i=0; i<albumSize; i++){
-						printf("%d ", serialGetchar(fd));
-					}
+					return -1;
 				}
+				printf("read album to cam\n");
+			}else if(commandNum == 2){
+				unsigned char* command;
+				int sendCommandBytes;
+				command = getRegisterToRom(&sendCommandBytes);
+				sendCommand(sendCommandBytes, fd, command);
+				if(checkResponse(fd) == 1){
+					printf("err response \n");
+					return -1;
+				}
+				printf("register to cam's ROM\n");
 			}
-    }
+		}
   }		
 	serialClose(fd);
   return 0;

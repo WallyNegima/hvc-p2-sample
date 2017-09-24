@@ -5,10 +5,19 @@
 #include <sys/ioctl.h>
 #include <wiringPi.h>
 #include <wiringSerial.h>
-
+#include <math.h>
 /*
 コマンドを返すだけのライブラリ
 */
+
+//コマンドを送信
+void sendCommand(int sendCommandBytes, int fd, unsigned char* command){
+  serialFlush(fd);
+  for(int i=0; i<sendCommandBytes; i++){
+    serialPutchar(fd, command[i]);
+  }
+	delay(500);
+}
 
 //intにはコマンドのバイト数を格納
 //コマンドのバイト列を返す
@@ -24,16 +33,78 @@ unsigned char* saveAlbumToHost(int* sendCommandBytes){
   return command;
 }
 
+//int型整数のnbit目から8bitを取得して返す
+unsigned char getBitFromN(int data, int n){
+	unsigned char bit=0b00000000;
+	for(int i=0; i<32; i++){
+		if(n == i){
+			for(int j = 0; j<8; j++){
+				bit += data & (int)pow(2.0, (double)j);
+			}
+			break;
+		}
+		data = data >> 1;
+	}
+	return bit;
+
+}
+
 //アルバムをホストからカメラへ引っ張る
-unsigned char* readAlbumToCamera(int* sendCommandBytes){
+unsigned char* readAlbumToCamera(int* sendCommandBytes, int fd){
   unsigned char* command;
-  *sendCommandBytes = 4;
+	FILE *fp;
+	const char* album = "album.txt";
+	//アルバムデータを開く
+	fp = fopen(album, "rb");
+	if(fp == NULL){
+		printf("err file open\n");
+		return command=NULL;
+	}
+	int dataSize, albumSize, CRC;
+	fscanf(fp, "%d,%d,%d",&dataSize, &albumSize, &CRC);
+	printf("dataSize:%d\n", dataSize);
+	printf("albumSize:%d\n", albumSize);
+	printf("CRC:%d\n",CRC);
+	unsigned char lsb0, lsb1, msb0, msb1;
+	unsigned char microBit[4];
+  *sendCommandBytes = albumSize+4*4;
   command = (unsigned char*)malloc(sizeof(unsigned char)*(*sendCommandBytes));
   command[0] = 0xFE;
   command[1] = 0x21;
   command[2] = 0x04;
   command[3] = 0x00;
+	for(int i=0; i<4; i++){
+		microBit[i] = getBitFromN(dataSize, i*8);
+		command[i+4]=microBit[i];
+	}
+	int dataSizeTemp = microBit[0];
+	dataSizeTemp = dataSizeTemp | (microBit[1]<<8) | (microBit[2]<<16) | (microBit[3]<<24);
+	printf("datasizetemp:%d\n",dataSizeTemp);
 
+	//albumsize
+	for(int i=0; i<4; i++){
+		microBit[i] = getBitFromN(albumSize, i*8);
+		command[i+8]=microBit[i];
+	}
+	//CRC
+	for(int i=0; i<4; i++){
+		microBit[i] = getBitFromN(CRC, i*8);
+		command[i+12]=microBit[i];
+	}
+	serialFlush(fd);
+	for(int i=0; i<16; i++){
+		serialPutchar(fd, command[i]);
+	}
+	//アルバムデータを1行ずつ取り出して格納
+	for(int i=0; i<albumSize; i++){
+		unsigned char microAlbumData;
+		int albumData;
+		fscanf(fp, "%d", &albumData);
+		microAlbumData = getBitFromN(albumData, 0);
+		command[i+16] = microAlbumData;
+		serialPutchar(fd, command[i+16]);
+	}
+	fclose(fp);
   return command;
 }
 
@@ -195,20 +266,15 @@ void getResponseImage(int fd){
 		}
 	}
 }
-//コマンドを送信
-void sendCommand(int sendCommandBytes, int fd, unsigned char* command){
-  serialFlush(fd);
-  for(int i=0; i<sendCommandBytes; i++){
-    serialPutchar(fd, command[i]);
-  }
-}
 
 //ヘッダー部が正しければ1を返す
 int responseIsErr(int fd){
+	int err;
   if(serialGetchar(fd) != 0xFE){
     return 1;
   }
-  if(serialGetchar(fd) != 0x00){
+  if( (err = serialGetchar(fd)) != 0x00){
+		printf("response code %d\n",err);
     return 1;
   }
   return -1;
