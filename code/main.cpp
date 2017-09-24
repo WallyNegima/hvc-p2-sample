@@ -94,7 +94,6 @@ int main(){
 			//送信中のデータなどは一度破棄する
 			sendCommand(sendCommandBytes, fd, command);
       printf("sended\n");
-      delay(500);
 
       if(serialDataAvail(fd)){
 				//結果が帰ってきたあとの処理

@@ -59,7 +59,6 @@ int main(int argc, char* argv[]){
             //機器のROMに登録
             command = getRegisterToRom(&sendCommandBytes);
             sendCommand(sendCommandBytes, fd, command);
-            delay(500);             
             if(serialDataAvail(fd)){
               checkResponse(fd);
             }
@@ -67,7 +66,6 @@ int main(int argc, char* argv[]){
             //ホストのアルバムに保存
             command = saveAlbumToHost(&sendCommandBytes);
             sendCommand(sendCommandBytes, fd, command);
-            delay(700);
             if(serialDataAvail(fd)){
 							int dataSize, albumSize, CRC;
 							dataSize = checkResponse(fd);		
