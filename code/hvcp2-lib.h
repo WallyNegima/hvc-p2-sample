@@ -67,7 +67,7 @@ unsigned char* readAlbumToCamera(int* sendCommandBytes, int fd){
 	printf("CRC:%d\n",CRC);
 	unsigned char lsb0, lsb1, msb0, msb1;
 	unsigned char microBit[4];
-  *sendCommandBytes = dataSize;
+  *sendCommandBytes = dataSize+16;
   command = (unsigned char*)malloc(sizeof(unsigned char)*(*sendCommandBytes));
   command[0] = 0xFE;
   command[1] = 0x21;
