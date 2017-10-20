@@ -11,7 +11,7 @@
 const char* serialPath = "/dev/hvcp2";
 const int baudrate = 9600;
 int sendCommandBytes = 0; //カメラへ送信するコマンドが何バイトなのか保存
-const char* dbName = "user.db";
+const char* dbName = "/root/Mimamori/mimamori.db";
 
 int main(int argc, char* argv[]){
   int fd; //シリアル通信のID的なもの
