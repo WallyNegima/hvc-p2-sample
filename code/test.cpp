@@ -55,6 +55,7 @@ int main(){
         return 0;
       }
       if(commandNum == 0){
+        //カメラモジュールのROMデータを消去
         unsigned char* command;
         int sendCommandBytes;
         command = resetROMData(&sendCommandBytes);
@@ -66,7 +67,8 @@ int main(){
           printf("ok\n");
         }
       }else if(commandNum == 1){
-				unsigned char* command;
+				//アルバムデータをカメラへ読み込む
+        unsigned char* command;
 				int sendCommandBytes;
 				command = readAlbumToCamera(&sendCommandBytes, fd);
 				//sendCommand(sendCommandBytes, fd, command);
@@ -75,7 +77,8 @@ int main(){
 				}
 				printf("read album to cam\n");
 			}else if(commandNum == 2){
-				unsigned char* command;
+				//ROMにカメラのデータを書き込む
+        unsigned char* command;
 				int sendCommandBytes;
 				command = getRegisterToRom(&sendCommandBytes);
 				sendCommand(sendCommandBytes, fd, command);

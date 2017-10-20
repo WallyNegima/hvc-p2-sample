@@ -85,135 +85,152 @@ int main(){
 	if(fd < 0){
 		//シリアルオープンに失敗
 		printf("can not open %s \n", serialPath);
-	}else{
-		//シリアルオープンに成功
-		printf("open %s \n",serialPath);
-		command = getSeachCommand(&sendCommandBytes);
-		
-		while(1){
-			//送信中のデータなどは一度破棄する
-			sendCommand(sendCommandBytes, fd, command);
-      printf("sended\n");
-
-      if(serialDataAvail(fd)){
-				//結果が帰ってきたあとの処理
-				
-				//ヘッダー部を解析してエラーが出たら終了
-				if(checkResponse(fd) == 1){
-					printf("ヘッダー部がおかしかった\n");
-				}else{
-					//データの処理
-					//体，手，顔の検出数を取得
-					int bodyNum = 0;
-					bodyNum = serialGetchar(fd);
-					int handNum = 0;
-					handNum = serialGetchar(fd);
-					int faceNum = 0;
-					faceNum = serialGetchar(fd);
-
-					//予約で0固定分
-					serialGetchar(fd);
-
-					//体の検出結果
-					RESULT* bodyResult = (RESULT*)malloc(sizeof(RESULT)*bodyNum);
-					for(int i=0; i<bodyNum; i++){
-						//検出結果を格納していく
-						getObjectResult(&bodyResult[i], fd);
-						printf("x=%d y=%d size=%d confidence=%d\n", bodyResult[i].posX, bodyResult[i].posY, bodyResult[i].size, bodyResult[i].confidence);
-					}
-
-					//手の検出結果
-					RESULT* handResult = (RESULT*)malloc(sizeof(RESULT)*handNum);
-					for(int i=0; i<handNum; i++){
-						getObjectResult(&handResult[i],fd);
-						printf("x=%d y=%d size=%d confidence=%d\n", handResult[i].posX, handResult[i].posY, handResult[i].size, handResult[i].confidence);
-					}
-
-					//顔の検出結果
-					RESULT* faceResult = (RESULT*)malloc(sizeof(RESULT)*faceNum);
-					for(int i=0; i<faceNum; i++){
-						fluent::Logger *logger = new fluent::Logger();
-						logger->new_forward("localhost", 24224);
-						fluent::Message *msg = logger->retain_message("camera");
-						getObjectResult(&faceResult[i],fd);//これで座標とサイズと信頼度がわかる
-						msg->set("posX", std::to_string(faceResult[i].posX));
-						msg->set("posY", std::to_string(faceResult[i].posY));
-						msg->set("size", std::to_string(faceResult[i].size));
-						msg->set("confidence", std::to_string(faceResult[i].confidence));
-
-						//顔の位置を9分割して判定
-						int facePos = getFacePos(&faceResult[i]);
-						msg->set("pos", std::to_string(facePos));
-						if(facePos == 4){
-							printf("object is center\n");
-						}
-
-						if(0b00010000 & command[4]){
-							//年齢検出
-							int age = 0;
-							age = getAge(fd);
-							printf("age:%d\n", age);
-							msg->set("age", std::to_string(age));
-						}
-						if(0b00100000 & command[4]){
-							int sex = -1;
-							sex = getSex(fd);
-							printf("sex:%d\n", sex);
-							msg->set("sex", std::to_string(sex));
-						}
-						if(0b01000000 & command[4]){
-							//視線検出
-						}
-						if(0b10000000 & command[4]){
-							//目つむり検出
-						}
-						if(0b00000001 & command[5]){
-							//表情
-							int noneEmotion, joyEmotion, surprizeEmotion, angerEmotion, sorrowEmotion, totalEmotion;
-							noneEmotion = serialGetchar(fd);
-							joyEmotion = serialGetchar(fd);
-							surprizeEmotion = serialGetchar(fd);
-							angerEmotion = serialGetchar(fd);
-							sorrowEmotion = serialGetchar(fd);
-							totalEmotion = serialGetchar(fd);
-							printf("無表情感:%d\n喜び:%d\n驚き:%d\n怒り:%d\n悲しみ:%d\n表情度:%d\n",
-							noneEmotion, joyEmotion, surprizeEmotion, angerEmotion, sorrowEmotion, totalEmotion-100); 
-							msg->set("noneEmo", std::to_string(noneEmotion));
-							msg->set("joyEmo", std::to_string(joyEmotion));
-							msg->set("surprizeEmo", std::to_string(surprizeEmotion));
-							msg->set("angerEmo", std::to_string(angerEmotion));
-							msg->set("sorrowEmo", std::to_string(sorrowEmotion));
-							msg->set("totalEmo", std::to_string(totalEmotion));
-						}
-						if(0b00000010 & command[5]){
-							//顔認証
-							int userid, similarity;
-							userid = getMSBLSB(fd);
-							similarity = getMSBLSB(fd);
-							if(userid > 100 || userid < 0){
-								//おかしい
-							}else{
-								printf("userid:%d\n",userid);
-								msg->set("userid", std::to_string(userid));
-							}
-						}
-						logger->emit(msg);
-						delete logger;
-					}
-
-					free(bodyResult);
-					free(handResult);
-					free(faceResult);
-
-					if(faceNum > 0){
-						delay(5000);
-					}
-				}
-			}
-      printf("-------------\n");
-			delay(2000);
-			
-		}
+    return -1;
 	}
+
+  //シリアルオープンに成功
+  printf("open %s \n",serialPath);
+  /*
+  //ホストのアルバムを読み込む
+  command = readAlbumToCamera(&sendCommandBytes, fd);
+  if(checkResponse(fd) == 1){
+    return -1;
+  }
+  printf("read album to cam\n");
+  */
+  /*
+  command = getRegisterToRom(&sendCommandBytes);
+  sendCommand(sendCommandBytes, fd, command);
+  if(checkResponse(fd) == 1){
+    printf("err response \n");
+    return -1;
+  }
+  printf("register to cam's ROM\n");
+  */
+  command = getSeachCommand(&sendCommandBytes);
+
+  while(1){
+    //送信中のデータなどは一度破棄する
+    sendCommand(sendCommandBytes, fd, command);
+    printf("sended\n");
+
+    if(serialDataAvail(fd)){
+      //結果が帰ってきたあとの処理
+      
+      //ヘッダー部を解析してエラーが出たら終了
+      if(checkResponse(fd) == 1){
+        printf("ヘッダー部がおかしかった\n");
+      }else{
+        //データの処理
+        //体，手，顔の検出数を取得
+        int bodyNum = 0;
+        bodyNum = serialGetchar(fd);
+        int handNum = 0;
+        handNum = serialGetchar(fd);
+        int faceNum = 0;
+        faceNum = serialGetchar(fd);
+
+        //予約で0固定分
+        serialGetchar(fd);
+
+        //体の検出結果
+        RESULT* bodyResult = (RESULT*)malloc(sizeof(RESULT)*bodyNum);
+        for(int i=0; i<bodyNum; i++){
+          //検出結果を格納していく
+          getObjectResult(&bodyResult[i], fd);
+          printf("x=%d y=%d size=%d confidence=%d\n", bodyResult[i].posX, bodyResult[i].posY, bodyResult[i].size, bodyResult[i].confidence);
+        }
+
+        //手の検出結果
+        RESULT* handResult = (RESULT*)malloc(sizeof(RESULT)*handNum);
+        for(int i=0; i<handNum; i++){
+          getObjectResult(&handResult[i],fd);
+          printf("x=%d y=%d size=%d confidence=%d\n", handResult[i].posX, handResult[i].posY, handResult[i].size, handResult[i].confidence);
+        }
+
+        //顔の検出結果
+        RESULT* faceResult = (RESULT*)malloc(sizeof(RESULT)*faceNum);
+        for(int i=0; i<faceNum; i++){
+          fluent::Logger *logger = new fluent::Logger();
+          logger->new_forward("localhost", 24224);
+          fluent::Message *msg = logger->retain_message("camera");
+          getObjectResult(&faceResult[i],fd);//これで座標とサイズと信頼度がわかる
+          msg->set("posX", std::to_string(faceResult[i].posX));
+          msg->set("posY", std::to_string(faceResult[i].posY));
+          msg->set("size", std::to_string(faceResult[i].size));
+          msg->set("confidence", std::to_string(faceResult[i].confidence));
+
+          //顔の位置を9分割して判定
+          int facePos = getFacePos(&faceResult[i]);
+          msg->set("pos", std::to_string(facePos));
+          if(facePos == 4){
+            printf("object is center\n");
+          }
+
+          if(0b00010000 & command[4]){
+            //年齢検出
+            int age = 0;
+            age = getAge(fd);
+            printf("age:%d\n", age);
+            msg->set("age", std::to_string(age));
+          }
+          if(0b00100000 & command[4]){
+            int sex = -1;
+            sex = getSex(fd);
+            printf("sex:%d\n", sex);
+            msg->set("sex", std::to_string(sex));
+          }
+          if(0b01000000 & command[4]){
+            //視線検出
+          }
+          if(0b10000000 & command[4]){
+            //目つむり検出
+          }
+          if(0b00000001 & command[5]){
+            //表情
+            int noneEmotion, joyEmotion, surprizeEmotion, angerEmotion, sorrowEmotion, totalEmotion;
+            noneEmotion = serialGetchar(fd);
+            joyEmotion = serialGetchar(fd);
+            surprizeEmotion = serialGetchar(fd);
+            angerEmotion = serialGetchar(fd);
+            sorrowEmotion = serialGetchar(fd);
+            totalEmotion = serialGetchar(fd);
+            printf("無表情感:%d\n喜び:%d\n驚き:%d\n怒り:%d\n悲しみ:%d\n表情度:%d\n",
+            noneEmotion, joyEmotion, surprizeEmotion, angerEmotion, sorrowEmotion, totalEmotion-100); 
+            msg->set("noneEmo", std::to_string(noneEmotion));
+            msg->set("joyEmo", std::to_string(joyEmotion));
+            msg->set("surprizeEmo", std::to_string(surprizeEmotion));
+            msg->set("angerEmo", std::to_string(angerEmotion));
+            msg->set("sorrowEmo", std::to_string(sorrowEmotion));
+            msg->set("totalEmo", std::to_string(totalEmotion));
+          }
+          if(0b00000010 & command[5]){
+            //顔認証
+            int userid, similarity;
+            userid = getMSBLSB(fd);
+            similarity = getMSBLSB(fd);
+            if(userid > 100 || userid < 0){
+              //おかしい
+            }else{
+              printf("userid:%d\n",userid);
+              msg->set("userid", std::to_string(userid));
+            }
+          }
+          logger->emit(msg);
+          delete logger;
+        }
+
+        free(bodyResult);
+        free(handResult);
+        free(faceResult);
+
+        if(faceNum > 0){
+          delay(5000);
+        }
+      }
+    }
+    printf("-------------\n");
+    delay(2000);
+  }
 	serialClose(fd);
 }
