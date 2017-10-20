@@ -92,10 +92,11 @@ unsigned char* readAlbumToCamera(int* sendCommandBytes, int fd){
 		command[i+12]=microBit[i];
 	}
 	
-	/*
+  serialFlush(fd);
   for(int i=0; i<16; i++){
 		serialPutchar(fd, command[i]);
-	}*/
+	}
+  printf("\n");
 	//アルバムデータを1行ずつ取り出して格納
 	for(int i=0; i<albumSize; i++){
 		unsigned char microAlbumData;
@@ -103,12 +104,8 @@ unsigned char* readAlbumToCamera(int* sendCommandBytes, int fd){
 		fscanf(fp, "%d", &albumData);
 		microAlbumData = getBitFromN(albumData, 0);
 		command[i+16] = microAlbumData;
-		//serialPutchar(fd, command[i+16]);
+		serialPutchar(fd, command[i+16]);
 	}
-  serialFlush(fd);
-  for(int i=0; i<dataSize; i++){
-    serialPutchar(fd, command[i]);
-  }
 	fclose(fp);
   return command;
 }
