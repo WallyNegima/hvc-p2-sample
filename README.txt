@@ -3,12 +3,19 @@
 
 - 使い方
   - 顔を認識したい
-    - exe-camera
+    - 実行形式ファイル:exe-camera
   - 顔を登録したい
-    - faceRegister
+    - 実行形式ファイル:faceRegister
     - 実行時にid，dataid，人の名前を入力すること
-    - 例: faceRegister 0 0 ほげたろう
-    - 既にIDに別の名前が登録されていれば上書きする
+      - 例: faceRegister 0 0 ほげたろう
+      - 既にIDに別の名前が登録されていれば上書きする
+    - code直下にalbum.txtというアルバムデータが作成される
+  - アルバムデータをカメラに読み込む
+    - 実行形式ファイル:libTester
+    - コマンドがいくつか用意されている
+      - 1:アルバムデータをホストからカメラへ
+      - 2:カメラ内のアルバムデータをROMへ
+      - の順序で行うことでalbum.txtのアルバムデータをカメラに保持できる
 
 - シリアルルール
 	- 99-serial.rulesを/etc/udev/rules.d/ 直下に置く
